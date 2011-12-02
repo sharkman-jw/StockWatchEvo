@@ -1,0 +1,243 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+<script src="../utils.js" type="text/javascript"></script>
+<script src="../setting.js" type="text/javascript"></script>
+<script>
+$(document).ready(function(){
+
+var lsu = localStorageUtils;
+var sm = settingsManager;
+
+/**
+ *
+ */
+module("Setting");
+
+test("save", function() {
+  var s1 = new Setting("Data Refresh", "On");
+  s1.save();
+  var s2 = lsu.getObj(s1.key, null, Setting.prototype);
+  equal(s2.key, s1.key);
+  equal(s2.value, s1.value);
+});
+
+test("remove", function() {
+  var s1 = new Setting("Data Refresh", "On");
+  s1.save();
+  var s2 = lsu.getObj(s1.key, null, Setting.prototype);
+  s2.remove();
+  s2 = lsu.getObj(s1.key, null, Setting.prototype);
+  equal(s2, null);
+});
+
+test("setValue", function() {
+  var s1 = new Setting("Data Refresh", "On");
+  s1.save();
+  s1.setValue("Off");
+  equal(s1.value, "Off");
+  var s2 = lsu.getObj(s1.key, null, Setting.prototype);
+  equal(s2.value, "Off");
+});
+
+test("getValue", function() {
+  var s1 = new Setting("Data Refresh", "On");
+  equal(s1.getValue(), "On");
+});
+
+/**
+ *
+ */
+module("BooleanSetting");
+
+test("setValue", function() {
+  var s1 = new BooleanSetting("Data Refresh", true);
+  equal(s1.value, 1);
+  
+  s1.setValue(false);
+  equal(s1.value, 0);
+  
+  s1.setValue('');
+  equal(s1.value, 0);
+  
+  s1.setValue(1);
+  equal(s1.value, 1);
+  
+  s1.setValue(0);
+  equal(s1.value, 0);
+});
+
+test("getValue", function() {
+  var s1 = new BooleanSetting("Data Refresh", 1);
+  equal(s1.getValue(), true);
+  
+  s1.setValue(0);
+  equal(s1.getValue(), false);
+});
+
+/**
+ *
+ */
+module("OptionSetting");
+
+test("constructor", function() {
+  var opt1 = new OptionSetting("Data Refresh Interval",
+    [10, 15, 20, 30, 45, 60, 120], 15);
+  equal(opt1.getValue(), 15);
+  equal(opt1.valueIndex, 1);
+  equal(opt1.defaultVal, 15);
+  
+  var opt2 = new OptionSetting("Data Refresh Interval",
+    [10, 15, 20, 30, 45, 60, 120], 200);
+  equal(opt2.getValue(), 10);
+  equal(opt2.valueIndex, 0);
+  equal(opt2.defaultVal, 10);
+});
+
+test("setValue", function() {
+  var opt = new OptionSetting("Data Refresh Interval",
+    [10, 15, 20, 30, 45, 60, 120], 15);
+  opt.setValue(20);
+  equal(opt.getValue(), 20);
+  equal(opt.valueIndex, 2);
+  opt.setValue(200);
+  equal(opt.getValue(), 20);
+  equal(opt.valueIndex, 2);
+});
+
+test("setValueByIndex", function() {
+  var opt = new OptionSetting("Data Refresh Interval",
+    [10, 15, 20, 30, 45, 60, 120], 15);
+  opt.setValueByIndex(5);
+  equal(opt.getValue(), 60);
+  equal(opt.valueIndex, 5);
+  opt.setValueByIndex(10);
+  equal(opt.getValue(), 60);
+  equal(opt.valueIndex, 5);
+});
+
+test("getValueAtIndex", function() {
+  var opt = new OptionSetting("Data Refresh Interval",
+    [10, 15, 20, 30, 45, 60, 120], 15);
+  equal(opt.getValueAtIndex(0), 10);
+  equal(opt.getValueAtIndex(3), 30);
+  equal(opt.getValueAtIndex(6), 120);
+  equal(opt.getValueAtIndex(-1), null);
+  equal(opt.getValueAtIndex(10), null);
+});
+
+test("validateValue", function() {
+  var opt = new OptionSetting("Data Refresh Interval",
+    [10, 15, 20, 30, 45, 60, 120], 15);
+  equal(opt.validateValue(), true);
+  equal(opt.validateValue(45), true);
+  equal(opt.validateValue(25), false);
+});
+
+test("setOptionsDisplays", function() {
+  var opt = new OptionSetting("Weekdays",
+    [0, 1, 2, 3, 4, 5, 6], 0);
+  opt.setOptionsDisplays(["X", "Y", "Z"]);
+  equal(JSON.stringify(opt.optionsDisps), JSON.stringify([]));
+  opt.setOptionsDisplays(["S", "M", "T", "W", "T", "F", "S"]);
+  equal(JSON.stringify(opt.optionsDisps),
+    JSON.stringify(["S", "M", "T", "W", "T", "F", "S"]));
+});
+
+test("getOptionsDisplays", function() {
+  var opt = new OptionSetting("Weekdays",
+    [0, 1, 2, 3, 4, 5, 6], 0);
+  equal(JSON.stringify(opt.getOptionsDisplays()),
+    JSON.stringify([0, 1, 2, 3, 4, 5, 6]));
+  opt.setOptionsDisplays(["S", "M", "T", "W", "T", "F", "S"]);
+  equal(JSON.stringify(opt.getOptionsDisplays()),
+    JSON.stringify(["S", "M", "T", "W", "T", "F", "S"]));
+});
+
+/**
+ *
+ */
+module("settingsManager");
+
+test("getSetting", function() {
+  lsu.clearAll();
+  var s1 = new Setting("Data Refresh", "On");
+  s1.save();
+  
+  var s = sm.getSetting("Data Refresh");
+  equal(s.key, s1.key);
+  equal(s.getValue(), s1.getValue());
+  
+  var s2 = new Setting("Run", false);
+  s2.save();
+  
+  s = sm.getSetting("Run");
+  equal(s.key, s2.key);
+  equal(s.getValue(), s2.getValue());
+  
+  var s3 = new OptionSetting("Weekdays",
+    [0, 1, 2, 3, 4, 5, 6], 0);
+  s3.save();
+  
+  s = sm.getSetting("Weekdays");
+  equal(s.key, s3.key);
+  equal(s.getValue(), s3.getValue());
+});
+
+test("createSetting", function() {
+  lsu.clearAll();
+  var s1 = sm.createSetting("Data Refresh", "On");
+  var s2 = sm.getSetting("Data Refresh");
+  ok(s2 != null && s2.getValue() == "On");
+  
+  s1 = sm.createSetting("Data Refresh", "Off");
+  equal(s1.getValue(), "On");
+  
+  s1 = sm.createSetting("Data Refresh", "Off", true);
+  equal(s1.getValue(), "Off");
+});
+
+test("createBooleanSetting", function() {
+  lsu.clearAll();
+  var s1 = sm.createBooleanSetting("Data Refresh", true);
+  var s2 = sm.getSetting("Data Refresh");
+  ok(s2 != null && s2.getValue() == true);
+  
+  s1 = sm.createBooleanSetting("Data Refresh", false);
+  equal(s1.getValue(), true);
+  
+  s1 = sm.createBooleanSetting("Data Refresh", false, true);
+  equal(s1.getValue(), false);
+});
+
+test("createOptionSetting", function() {
+  lsu.clearAll();
+  var s1 = sm.createOptionSetting("Weekdays",
+    [0, 1, 2, 3, 4, 5, 6], 5);
+  var s2 = sm.getSetting("Weekdays");
+  ok(s2 != null && s2.getValue() == 5);
+  
+  s1 = sm.createOptionSetting("Weekdays", [0, 1, 2, 3, 4, 5, 6], 0);
+  equal(s1.getValue(), 5);
+  
+  s1 = sm.createOptionSetting("Weekdays", [0, 1, 2, 3, 4, 5, 6], 0, true);
+  equal(s1.getValue(), 0);
+});
+
+});
+
+</script>
+  
+</head>
+<body>
+ <h1 id="qunit-header">utils.js unit testing</h1>
+ <h2 id="qunit-banner"></h2>
+ <div id="qunit-testrunner-toolbar"></div>
+ <h2 id="qunit-userAgent"></h2>
+ <ol id="qunit-tests"></ol>
+ <div id="qunit-fixture">test markup, will be hidden</div>
+</body>
+</html>

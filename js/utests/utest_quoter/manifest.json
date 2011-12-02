@@ -1,0 +1,15 @@
+{
+  "name": "Quoter Unit Testing",
+  "version": "1.0",
+  "description": "Quoter Unit Testing",
+  "browser_action": {
+    "default_icon": "icon.png",
+    "popup": "utest_quoter.html"
+  },
+  "permissions": [
+    "http://www.google.com/",
+    "https://www.google.com/",
+    "http://d.yimg.com/autoc.finance.yahoo.com/",
+    "notifications"
+  ]
+}

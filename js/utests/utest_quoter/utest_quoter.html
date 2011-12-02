@@ -1,0 +1,38 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<script src="stock_data.js" type="text/javascript"></script>
+<script src="utils.js" type="text/javascript"></script>
+<script src="quoter.js" type="text/javascript"></script>
+<script>
+function output(stuff, color) {
+  var node = document.createElement('p');
+  if (color) {
+    node.setAttribute('style', 'color:' + color);
+  }
+  var textNode = document.createTextNode(">> " + stuff + "\n");
+  node.appendChild(textNode);
+  jQuery("#output").prepend(node);
+  //jQuery("#debug_area").append(node);
+}
+
+$(document).ready(function(){
+
+  Quoter.processResultStockDataCallBack = function(sd) {
+    //ok(true, sd.keyTicker);
+    console.log(sd);
+    output(sd.toString());
+  }  
+  var gq = new GoogleQuoter();
+  gq.requestGroupQuotes(['AAPL', 'C']);
+
+});
+</script>
+  
+</head>
+<body style="min-width:500px">
+ <div id="output" style="background-color:black; color:white">
+ </div>
+</body>
+</html>

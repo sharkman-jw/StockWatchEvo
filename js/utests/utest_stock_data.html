@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+<script src="../stock_data.js" type="text/javascript"></script>
+<script src="../utils.js" type="text/javascript"></script>
+<script>
+$(document).ready(function(){
+
+module("Member methods");
+
+test("assign", function() {
+  var sd1 = new StockData();
+  var sd2 = new StockData();
+  var data = { symbol: 'AAPL', exchange: 'NASDAQ', foo: 'bar' };
+  sd1.assign(data, true);
+  sd2.assign(data, false);
+  equal(sd1.keyTicker, "NASDAQ:AAPL");
+  ok(!sd1.hasOwnProperty('foo'), "sd1 doesn't have property [foo]");
+  ok(sd2.hasOwnProperty('foo'), "sd2 has property [foo]");
+});
+
+test("generateKeyTicker", function() {
+  var sd = new StockData();
+  sd.symbol = 'SYMBOL';
+  sd.exchange = 'EXCHANGE';
+  sd.generateKeyTicker();
+  equal(sd.keyTicker, 'EXCHANGE:SYMBOL');
+});
+
+test("realLastPrice", function() {
+  var data = {t:'RENN',e:'NYSE',el:'4.25',elt:'Nov 22, %:51PM EST',l:'4.02'};
+  var sd = StockData.createFromGoogleData(data);
+  equal(sd.last, 4.02, 'last price');
+  equal(sd.extLast, 4.25, 'ext last price');
+  equal(sd.realLastPrice(), 4.25, 'real last price');
+});
+
+test("realChange", function() {
+  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
+  var sd = StockData.createFromGoogleData(data);
+  equal(sd.change, parseFloat(data['c']), 'change');
+  equal(sd.extChange, parseFloat(data['ec']), 'ext change');
+  equal(sd.realChange(), parseFloat(data['ec']), 'real change');
+});
+
+test("realPercentChange", function() {
+  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
+  var sd = StockData.createFromGoogleData(data);
+  equal(sd.percentChange, parseFloat(data['cp']), 'percent change');
+  equal(sd.extPercentChange, parseFloat(data['ecp']), 'ext percent change');
+  equal(sd.realPercentChange(), parseFloat(data['ecp']), 'real percent change');
+});
+
+test("calcLastTick", function() {
+  var data = {symbol:'RENN',last:'4.02'};
+  var sd = StockData.createFromData(data);
+  sd.calcLastTick(4.0);
+  equal(sd.lastTick, 'u', '4.02 is up from 4.0');
+  sd.calcLastTick(4.02);
+  equal(sd.lastTick, 'e', '4.02 equals 4.02');
+  sd.calcLastTick(4.05);
+  equal(sd.lastTick, 'd', '4.02 is down from 4.05');
+});
+
+test("toString", function() {
+  var data = {symbol:'RENN',last:'4.02',exchange:'NYSE'};
+  var sd = StockData.createFromData(data);
+  equal('NYSE:RENN', sd.keyTicker);
+});
+
+module("Static methods");
+
+test("createFromData", function() {
+  var data = { symbol: 'AAPL', exchange: 'NASDAQ' };
+  var sd = StockData.createFromData(data);
+  equal(sd.keyTicker, "NASDAQ:AAPL", "We expect value to be NASDAQ:AAPL" );
+  ok(true, JSON.stringify(sd));
+});
+
+test("createFromGoogleData", function() {
+  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
+  var sd = StockData.createFromGoogleData(data);
+  equal(sd.keyTicker, "NASDAQ:AAPL", "We expect value to be NASDAQ:AAPL" );
+  ok(true, JSON.stringify(sd));
+  var lsu = localStorageUtils;
+  lsu.saveObj(sd.keyTicker, sd);
+});
+
+});
+</script>
+  
+</head>
+<body>
+ <h1 id="qunit-header">sd.js unit testing</h1>
+ <h2 id="qunit-banner"></h2>
+ <div id="qunit-testrunner-toolbar"></div>
+ <h2 id="qunit-userAgent"></h2>
+ <ol id="qunit-tests"></ol>
+ <div id="qunit-fixture">test markup, will be hidden</div>
+</body>
+</html>
