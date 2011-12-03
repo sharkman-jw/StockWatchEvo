@@ -166,17 +166,36 @@ var localStorageUtils = (function() {
     },
     
     /**
-     * Clear all local storage items
+     * Clear local storage items by key pattern.
+     * @param {regex} local storage key regex pattern, of those items to be
+     *                removed
+     * @return {number} number of items removed
      */
-    clearAll: function() {
-      for (each in localStorage)
-        localStorage.removeItem(each);
-    }
+    clearByPattern: function(pattern) {
+      var n = 0;
+      var matchedResults = null;
+      for (each in localStorage) {
+        matchedResults = each.match(pattern);
+        if (matchedResults) {
+          localStorage.removeItem(each);
+          n ++;
+        }
+      }
+      return n;
+    },
     
     /**
-     * Clear all stock data
+     * Clear all local storage data
+     * @return {number} number of items removed
      */
-    // TODO
+    clearAll: function() {
+      var n = 0;
+      for (each in localStorage) {
+        localStorage.removeItem(each);
+        n ++;
+      }
+      return n;
+    }
   };
 })();
 
