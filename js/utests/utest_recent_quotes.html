@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+<script src="../utils.js" type="text/javascript"></script>
+<script src="../recent_quotes.js" type="text/javascript"></script>
+<script>
+$(document).ready(function(){
+
+module("RecentQuotes");
+
+test("save", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  rq.save();
+  equal(localStorageUtils.get("rq_NYSE:RENN"), JSON.stringify(rq));
+});
+
+test("retrieve", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  rq.save();
+  var rq2 = RecentQuotes.retrieve("NYSE:RENN");
+  equal(JSON.stringify(rq2), JSON.stringify(rq));
+});
+
+test("add", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  RecentQuotes.setLimit(3);
+  rq.add(3.9);
+  rq.add(3.89, 3);
+  
+  // test if quotes are saved
+  equal(JSON.stringify(rq.quotes), JSON.stringify([3.9, 3.89]));
+  
+  // test last tick
+  equal(rq.lastTick, 'd');
+  rq.add(3.89, 3);
+  equal(rq.lastTick, 'e');
+  rq.add(3.95, 3);
+  equal(rq.lastTick, 'u');
+  
+  // test last
+  equal(rq.last, 3.95);
+  
+  rq.add(3.92, 3);
+  
+  // test if oldest quotes are deleted
+  equal(JSON.stringify(rq.quotes), JSON.stringify([3.89, 3.95, 3.92]));
+  
+  // test trend
+  equal(rq.trend, 'u');
+  rq.add(3.92);
+  equal(rq.trend, 'e');
+  rq.add(3.9);
+  equal(rq.trend, 'd');
+  
+  RecentQuotes.setLimit(12);
+});
+
+test("average", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  equal(rq.average(), 0);
+  rq.add(4);
+  rq.add(5);
+  rq.add(6);
+  rq.add(7);
+  rq.add(8);
+  equal(rq.average(), 6);
+});
+
+test("clear", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  rq.add(4);
+  rq.add(5);
+  rq.add(6);
+  rq.add(7);
+  rq.add(8);
+  rq.clear();
+  equal(rq.quotes.length, 0);
+  equal(rq.last, null);
+});
+
+test("average() speed", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  for (var i = 0; i < 100; ++ i) {
+    rq.add(4);
+    rq.add(5);
+    rq.add(6);
+    rq.add(7);
+    rq.add(8);
+  }
+  ok(true, "calculated at least 500 times");
+});
+
+});
+</script>
+  
+</head>
+<body>
+ <h1 id="qunit-header">sd.js unit testing</h1>
+ <h2 id="qunit-banner"></h2>
+ <div id="qunit-testrunner-toolbar"></div>
+ <h2 id="qunit-userAgent"></h2>
+ <ol id="qunit-tests"></ol>
+ <div id="qunit-fixture">test markup, will be hidden</div>
+</body>
+</html>
