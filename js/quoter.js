@@ -47,6 +47,7 @@ Quoter.decodeHexadecimal = function(text) {
 Quoter.prototype.requestGroupQuotes = function(symbols) {
   var xhr = new XMLHttpRequest();
   var url = this.composeGroupQuoteUrl(symbols);
+  debugUtils.log(url);
   xhr.open("GET", url, true);
   xhr.onreadystatechange = this._processXMLHttpRequestReadyStateChange;
   xhr.send(null);
@@ -138,6 +139,29 @@ GoogleQuoter.processResultData = function(data) {
   
   if (Quoter.processResultStockDataCallBack)
     Quoter.processResultStockDataCallBack(sd);
+};
+
+/**
+ * Request a group of quotes.
+ * @param {array} symbols
+ */
+GoogleQuoter.prototype.requestGroupQuotes = function(symbols) {
+  var total = symbols.length;
+  var remaining = total; 
+  var i = 0;
+  var limit = 15; // one time request limit
+  var batch = [];
+  while (remaining > limit ) {
+    batch = [];
+    for (var j = 0; j < limit; ++ j, ++ i)
+      batch.push(symbols[i]);
+    Quoter.prototype.requestGroupQuotes.apply(this, [batch]);
+    remaining -= limit;
+  }
+  batch = [];
+  for (; i < total; ++ i)
+    batch.push(symbols[i])
+  Quoter.prototype.requestGroupQuotes.apply(this, [batch]);
 };
 
 /**
