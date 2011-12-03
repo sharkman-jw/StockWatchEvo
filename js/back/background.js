@@ -9,8 +9,8 @@ var bg = (function() {
   
   var lsu = localStorageUtils;
   var sm = settingsManager;
-
-  var subs = new SymbolSubscription();  
+  var subs = symbolSubscription;
+  
   var gQuoter = new GoogleQuoter();
   
   /**
@@ -52,6 +52,7 @@ var bg = (function() {
     subs.add('C');
     subs.add('.DJI');
     subs.add('GOOG');
+    subs.del('C');
   };
   
   /**
@@ -97,6 +98,12 @@ var bg = (function() {
      */
     run: function() {
       loopRefreshQuotes();
+    },
+    
+    /**
+     *
+     */
+    cleanup: function() {
     }
   };
 })();

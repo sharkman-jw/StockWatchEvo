@@ -13,10 +13,10 @@
  * numberUtils singleton
  */
 var numberUtils = (function() {
-  epsilon = 0.000001; // good enough for this app
+  var _epsilon = 0.000001; // good enough for this app
   
   return {
-    zeroTolerance: epsilon,
+    zeroTolerance: _epsilon,
     
     /**
      * Format number with comma(s)
@@ -76,10 +76,10 @@ var numberUtils = (function() {
      */
     compare: function(val1, val2) {
       if (Math.abs(val1 - val2) < epsilon)
-        return 0;
+        return 'e';
       else if (val1 > val2)
-        return 1;
-      return -1;
+        return 'g';
+      return 'l';
     }
   };
 })();
@@ -114,6 +114,7 @@ var localStorageUtils = (function() {
   return {
     save: _save,
     saveStr: _save,
+    get: _retrieveStr,
     getStr: _retrieveStr,
     saveNumber: _save,
     
@@ -195,6 +196,14 @@ var localStorageUtils = (function() {
         n ++;
       }
       return n;
+    },
+    
+    /**
+     * Remove an item by key. This is bascially a forward call.
+     * @param {string} key
+     */
+    remove: function(key) {
+      localStorage.removeItem(key);
     }
   };
 })();
