@@ -101,15 +101,39 @@ StockData.createFromGoogleData = function(data) {
   return sd;
 };
 
+/**
+ * Create a StockData object from given data.
+ * @param {obj} data
+ * @return {obj} StockData object
+ */
 StockData.createFromData = function(data) {
   var sd = new StockData();
   sd.assign(data, false);
   return sd;
 };
 
-StockData.prototype.update = function(data) {
-  // TODO or TOREMOVE
+/**
+ * Retrieve a StockData object from local storage.
+ * @param {string} keyTicker
+ * @return {obj} StockData object
+ */
+StockData.retrieve = function(keyTicker) {
+  return localStorageUtils.getObj('sd_' + keyTicker, null, StockData.prototype);
+}
+
+/**
+ * Save this StockData object to local storage.
+ */
+StockData.prototype.save = function() {
+  localStorageUtils.saveObj('sd_' + this.keyTicker, this);
 };
+
+/**
+ * Remove this StockData object from local storage.
+ */
+StockData.prototype.remove = function() {
+  localStorage.removeItem('sd_' + this.keyTicker);
+}
 
 StockData.prototype.assign = function(data, validate) {
   if (validate) {
@@ -155,3 +179,7 @@ StockData.prototype.calcLastTick = function(prevLastPrice) {
 StockData.prototype.toString = function() {
   return '[stock data ' + this.keyTicker + ']';
 };
+
+
+
+

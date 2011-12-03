@@ -11,6 +11,25 @@ $(document).ready(function(){
 
 module("Member methods");
 
+test("save", function() {
+  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
+  var sd = StockData.createFromGoogleData(data);
+  sd.save();
+  var text = localStorageUtils.getStr('sd_' + sd.keyTicker, null);
+  equal(text, JSON.stringify(sd));
+});
+
+test("remove", function() {
+  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
+  var sd = StockData.createFromGoogleData(data);
+  sd.save();
+  var text = localStorageUtils.getStr('sd_' + sd.keyTicker, null);
+  ok(text);
+  sd.remove();
+  text = localStorageUtils.getStr('sd_' + sd.keyTicker, null);
+  equal(text, null);
+});
+
 test("assign", function() {
   var sd1 = new StockData();
   var sd2 = new StockData();
@@ -72,6 +91,15 @@ test("toString", function() {
 });
 
 module("Static methods");
+
+test("retrieve", function() {
+  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
+  var sd = StockData.createFromGoogleData(data);
+  sd.save();
+  var sd2 = StockData.retrieve(sd.keyTicker);
+  equal(JSON.stringify(sd2), JSON.stringify(sd));
+  equal(sd2.toString(), sd.toString());
+});
 
 test("createFromData", function() {
   var data = { symbol: 'AAPL', exchange: 'NASDAQ' };

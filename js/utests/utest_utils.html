@@ -235,7 +235,7 @@ test("getObj", function() {
   equal(lsu.getObj('p2', null, Ninjia.prototype).info(), p2.info());
 });
 
-test("clearAll", function() {
+test("clear", function() {
   var lsu = localStorageUtils;
   lsu.saveStr('key1', 'val1')
   lsu.saveStr('key2', 'val2')
@@ -248,6 +248,27 @@ test("clearAll", function() {
     ++ count;
   
   equal(count, 0);
+});
+
+test("clearByPattern", function() {
+  var lsu = localStorageUtils;
+  lsu.clearAll();
+  lsu.saveStr('str1', 'val1')
+  lsu.saveStr('str2', 'val2')
+  lsu.saveStr('str3', 'val3')
+  lsu.saveObj('obj1', new Person('Xingyu', 26));
+  lsu.saveNumber('num1', 123.2)
+  lsu.saveNumber('num2', 77)
+  
+  var n = lsu.clearByPattern(/^(num|obj)/i);
+  equal(n, 3);
+
+  equal(lsu.getStr('obj1', null), null);
+  equal(lsu.getStr('num1', null), null);
+  equal(lsu.getStr('num2', null), null);
+  ok(lsu.getStr('str1', null));
+  ok(lsu.getStr('str2', null));
+  ok(lsu.getStr('str3', null));
 });
 
 module("debugUtils");
