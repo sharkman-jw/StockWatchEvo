@@ -8,31 +8,69 @@
  */
 
 function Setting(keyword, defaultVal) {
+  LSModel.apply(this, [keyword]);
+  
   this.type = '';
-  this.key = Setting.createKeyFromSettingKeyWord(keyword);
   this.defaultVal = defaultVal;
   this.value = defaultVal;
 };
 
-Setting.createKeyFromSettingKeyWord = function(keyword) {
+// inherit from LSModel
+Setting.prototype = new LSModel();
+Setting.prototype.constructor = Setting;
+
+/**
+ * Compose local storage key from keyword.
+ * @param {string} keyword
+ * @return {string} local storage key
+ */
+Setting._composeLSKey = function(keyword) {
   if (keyword)
     return '_' + keyword.replace(/\s/g, '_').toLowerCase();
-  return '';
+  return null;
 };
 
-Setting.prototype.save = function() {
-  localStorageUtils.saveObj(this.key, this);
+/**
+ * Retrieve setting obj from local storage.
+ * @param {string} keyword
+ * @param {obj} classPrototype: prototype to be assigned to retrieved obj
+ * @return {obj} retrieved setting obj
+ */
+Setting._retrieve = function(keyword, classPrototype) {
+  return localStorageUtils.getObj(Setting._composeLSKey(keyword),
+    null, classPrototype);
 };
 
-Setting.prototype.remove = function() {
-  localStorage.removeItem(this.key);
+/**
+ * Retrieve setting obj from local storage.
+ * @param {string} keyword
+ * @return {obj} retrieved setting obj
+ */
+Setting.retrieve = function(keyword) {
+  return Setting._retrieve(keyword, Setting.prototype);
 };
 
+/**
+ * Generate and assign local storage key.
+ * @param {string} keyword
+ */
+Setting.prototype._generateLSKey = function(keyword) {
+  this.lsKey = Setting._composeLSKey(keyword);
+};
+
+/**
+ * Set value.
+ * @param {any} value
+ */
 Setting.prototype.setValue = function(value) {
   this.value = value;
   this.save();
 };
 
+/**
+ * Get value.
+ * @return {any} value
+ */
 Setting.prototype.getValue = function() {
   return this.value;
 };
@@ -46,6 +84,10 @@ function BooleanSetting(keyword, defaultVal) {
 };
 BooleanSetting.prototype = new Setting();
 BooleanSetting.prototype.constructor = BooleanSetting;
+
+BooleanSetting.retrieve = function(keyword) {
+  return Setting._retrieve(keyword, BooleanSetting.prototype);
+};
 
 BooleanSetting.prototype.setValue = function(value) {
   this.value = value ? 1 : 0;
@@ -73,6 +115,10 @@ function OptionSetting(keyword, options, defaultVal) {
 };
 OptionSetting.prototype = new Setting();
 OptionSetting.prototype.constructor = OptionSetting;
+
+OptionSetting.retrieve = function(keyword) {
+  return Setting._retrieve(keyword, OptionSetting.prototype);
+};
 
 OptionSetting.prototype.setValue = function(value) {
   if (this.validateValue(value)) {
@@ -125,7 +171,7 @@ OptionSetting.prototype.getOptionsDisplays = function() {
 var settingsManager = (function() {
   var _retrieveSetting = function(keyword) {
     var obj = localStorageUtils.getObj(
-      Setting.createKeyFromSettingKeyWord(keyword), null);
+      Setting._composeLSKey(keyword), null);
     if (obj) {
       if (obj.type == 'option')
         obj.__proto__ = OptionSetting.prototype;

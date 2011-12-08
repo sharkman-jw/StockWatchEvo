@@ -1,7 +1,9 @@
 // Copyright 2011 Joshua Wang, MIT License
 
 /**
- * @fileoverview class StockData
+ * @fileoverview 
+ *   - class StockData
+ *   - class RecentQuotes
  * @author sharkman.jw@gmail.com (Joshua Wang)
  */
 
@@ -10,12 +12,17 @@
  * @param {bool} skipInit: this is for static creator methods
  */
 function StockData(skipInit) {
+  LSModel.call(this);
+  
   if (skipInit) {
   } else {
     this.symbol = null; // string
     this.exchange = null; // string
     this.name = null; // string
+    
     this.last = null; // number
+    this.bids = []; // array: e.g.:[[100,"390.04"],[100,"390.01"]]
+    this.asks = []; // array
     this.change = null; // number
     this.percentChange = null; // number
     this.open = null; // string
@@ -45,66 +52,36 @@ function StockData(skipInit) {
   }
 };
 
+// inherit from LSModel
+StockData.prototype = new LSModel();
+StockData.prototype.constructor = StockData;
+
 /**
- * Create a StockData object from google data.
- * @param {obj} data
- * @return {obj} StockData object
+ * Compose the local storage key.
+ * @param {string} keyTicker
+ * @return {string} local storage key
+ * @note static method
  */
-StockData.createFromGoogleData = function(data) {
-  var sd = new StockData(true);
-  sd.symbol = data.t;
-  sd.exchange = data.e;
-  sd.name = data.name;
-  sd.last = numberUtils.parseNumberWithComma(data.l); // number
-  sd.change = numberUtils.parseNumberWithComma(data.c); // number
-  sd.percentChange = numberUtils.parseNumberWithComma(data.cp); // number
-  sd.open = data.op;
-  sd.high = data.hi;
-  sd.low = data.lo;
-  sd.vol = data.vo;
-  sd.avgVol = data.avvo;
-  sd.high52w = data.hi52;
-  sd.low52w = data.lo52;
-  sd.marketCap = data.mc;
-  sd.pe = data.pe;
-  sd.beta = data.beta;
-  sd.eps = data.eps;
-  sd.type = data.type;
-  
-  if (data.hasOwnProperty('el')) {
-    sd.extHours = true;
-    sd.extLast = numberUtils.parseNumberWithComma(data.el); // number
-    sd.extChange = numberUtils.parseNumberWithComma(data.ec); // number
-    sd.extPercentChange = numberUtils.parseNumberWithComma(data.ecp); // number
-    if (sd.exchange == 'NASDAQ' || sd.exchange == 'NYSE' ||
-      sd.exchange == 'AMEX') {
-      if (data.elt.indexOf('PM') != -1)
-        sd.tradingStatus = 'aft-hrs';
-      else if (data.elt.indexOf('AM') != -1)
-        sd.tradingStatus = 'pre-mkt';
-    }
-    sd.lastTradeTime = data.elt;
-  } else {
-    sd.extHours = false;
-    sd.extLast = null; // number
-    sd.extChange = null; // number
-    sd.extPercentChange = null; // number
-    sd.tradingStatus = '';
-    sd.lastTradeTime = data.ltt;
-  }
-  
-  sd.delay = data.delay;
-  
-  sd.lastTick = 'e'; // string - 'e', 'u', 'd'
-  sd.generateKeyTicker(); // string - exchange:symbol
-  
-  return sd;
+StockData._composeLSKey = function(keyTicker) {
+  return keyTicker? ('d_' + keyTicker) : null;
+};
+
+/**
+ * Retrieve a StockData object from local storage.
+ * @param {string} keyTicker
+ * @return {obj} StockData object
+ * @note static method
+ */
+StockData.retrieve = function(keyTicker) {
+  return localStorageUtils.getObj(StockData._composeLSKey(keyTicker),
+    null, StockData.prototype);
 };
 
 /**
  * Create a StockData object from given data.
  * @param {obj} data
  * @return {obj} StockData object
+ * @note static method
  */
 StockData.createFromData = function(data) {
   var sd = new StockData();
@@ -112,29 +89,17 @@ StockData.createFromData = function(data) {
   return sd;
 };
 
-/**
- * Retrieve a StockData object from local storage.
- * @param {string} keyTicker
- * @return {obj} StockData object
- */
-StockData.retrieve = function(keyTicker) {
-  return localStorageUtils.getObj('sd_' + keyTicker, null, StockData.prototype);
-}
-
-/**
- * Save this StockData object to local storage.
- */
-StockData.prototype.save = function() {
-  localStorageUtils.saveObj('sd_' + this.keyTicker, this);
+StockData.prototype._generateLSKey = function(keyTicker) {
+  this.lsKey = StockData._composeLSKey(keyTicker ? keyTicker : this.keyTicker);
 };
 
 /**
- * Remove this StockData object from local storage.
+ * Assign properties' values to this instance.
+ * @param {obj} data
+ * @param {bool} validate: if true, only override properties that are currently
+ *                         in this instance; otherwise, assign any properties
+ *                         from input data.
  */
-StockData.prototype.remove = function() {
-  localStorage.removeItem('sd_' + this.keyTicker);
-}
-
 StockData.prototype.assign = function(data, validate) {
   if (validate) {
     for (each in data) {
@@ -150,7 +115,11 @@ StockData.prototype.assign = function(data, validate) {
 };
 
 StockData.prototype.generateKeyTicker = function() {
-  this.keyTicker = this.exchange + ':' + this.symbol;
+  if (this.exchange && this.symbol)
+    this.keyTicker = this.exchange + ':' + this.symbol;
+  else
+    this.keyTicker = null;
+  this._generateLSKey(/*this.keyTicker*/);
   return this.keyTicker;
 };
 
@@ -182,4 +151,111 @@ StockData.prototype.toString = function() {
 
 
 
+/**
+ * Constructor
+ * @param {string} keyTicker
+ */
+function RecentQuotes(keyTicker) {
+  LSModel.apply(this, [keyTicker]);
+  
+  this.keyTicker = keyTicker;
+  this.quotes = [];
+  this.last = null;
+  this.trend = ''; // trend will be available when engough quotes are saved
+  this.lastTick = 'e';
+};
+
+// inherit from LSModel
+RecentQuotes.prototype = new LSModel();
+RecentQuotes.prototype.constructor = RecentQuotes;
+
+RecentQuotes._quotesListLimit = 12;
+
+RecentQuotes._composeLSKey = function(keyTicker) {
+  return keyTicker ? ('rq_' + keyTicker) : null;
+};
+
+RecentQuotes.setLimit = function(limit) {
+  limit = Math.floor(limit);
+  RecentQuotes._quotesListLimit = limit < 3 ? 3 : limit;
+};
+
+RecentQuotes.retrieve = function(keyTicker) {
+  return localStorageUtils.getObj(RecentQuotes._composeLSKey(keyTicker),
+    null, RecentQuotes.prototype);
+};
+
+RecentQuotes.prototype._generateLSKey = function(keyTicker) {
+  this.lsKey = RecentQuotes._composeLSKey(
+    keyTicker ? keyTicker : this.keyTicker);
+};
+
+/**
+ * Calculate trend based the lastest quote (which hasn't been
+ * added to quote list yet) with current quote list average.
+ * @param {number} newQuote
+ */
+RecentQuotes.prototype._calcTrend = function(newQuote) {
+  var avg = this.average();
+  if (Math.abs(newQuote - avg) < numberUtils.zeroTolerance)
+    this.trend = 'e';
+  else if (newQuote > avg)
+    this.trend = 'u';
+  else
+    this.trend = 'd'; 
+};
+
+/**
+ * Add a new quote; and calculate trend, last tick.
+ * @param {number} quote
+ */
+RecentQuotes.prototype.add = function(quote) {
+  // get rid of oldest quote(s) if reached limit
+  if (this.quotes.length == RecentQuotes._quotesListLimit) {
+    this._calcTrend(quote); // calc trend before updating the quote list
+    this.quotes.shift();
+  } else if (this.quotes.length > RecentQuotes._quotesListLimit) {
+    // this will happend after limit was reset to be a smaller value
+    this._calcTrend(quote); // calc trend before updating the quote list
+    var toDelCount = this.quotes.length - RecentQuotes._quotesListLimit + 1;
+    this.quotes.splice(0, toDelCount);
+  }
+  // add latest quote
+  this.quotes.push(quote);
+  // calc last tick (before updating last quote)
+  if (this.last) {
+    if (Math.abs(this.last - quote) < numberUtils.zeroTolerance)
+      this.lastTick = 'e';
+    else if (quote > this.last)
+      this.lastTick = 'u';
+    else
+      this.lastTick = 'd';
+  }
+  // update last quote
+  this.last = quote;
+  this.save();
+};
+
+/**
+ * Calculate average value of recent quotes.
+ * @return average value
+ */
+RecentQuotes.prototype.average = function() {
+  var len = this.quotes.length;
+  if (len < numberUtils.zeroTolerance)
+    return 0;
+  
+  var sum = 0.0;
+  for (var i = 0; i < len; ++ i)
+    sum += this.quotes[i];
+  return sum / len;
+};
+
+/**
+ * Clear
+ */
+RecentQuotes.prototype.clear = function() {
+  this.quotes = [];
+  this.last = null;
+};
 

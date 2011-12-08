@@ -167,17 +167,29 @@ var localStorageUtils = (function() {
     },
     
     /**
+     * Retrieve string values from local storage by regex pattern.
+     * @param {regex} local storage key regex pattern.
+     */
+    getByPattern: function(pattern) {
+      var matchedItems = {};
+      for (each in localStorage) {
+        if (each.match(pattern)) {
+          matchedItems[each] = _retrieveStr(each);
+        }
+      }
+      return matchedItems;
+    },
+    
+    /**
      * Clear local storage items by key pattern.
      * @param {regex} local storage key regex pattern, of those items to be
-     *                removed
-     * @return {number} number of items removed
+     *                removed.
+     * @return {number} number of items removed.
      */
     clearByPattern: function(pattern) {
       var n = 0;
-      var matchedResults = null;
       for (each in localStorage) {
-        matchedResults = each.match(pattern);
-        if (matchedResults) {
+        if (each.match(pattern)) {
           localStorage.removeItem(each);
           n ++;
         }
@@ -207,6 +219,39 @@ var localStorageUtils = (function() {
     }
   };
 })();
+
+
+
+/**
+ * This is a interface for models that can be saved to and retrieved from
+ * local storage.
+ */
+function LSModel(seedWord) {
+  if (seedWord)
+    this._generateLSKey(seedWord);
+  else
+    this.lsKey = null;
+};
+
+LSModel.prototype._generateLSKey = function(seedWord) {
+  // override this
+  this.lsKey = null;
+};
+
+LSModel.prototype.save = function() {
+  if (this.lsKey)
+    localStorage.setItem(this.lsKey, this.json());
+    //localStorageUtils.saveObj(this.lsKey, this);
+};
+
+LSModel.prototype.remove = function() {
+  if (this.lsKey)
+    localStorageUtils.remove(this.lsKey);
+};
+
+LSModel.prototype.json = function() {
+  return JSON.stringify(this);
+}
 
 
 
