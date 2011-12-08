@@ -15,7 +15,9 @@
   "permissions": [
     "http://www.google.com/",
     "https://www.google.com/",
+	"http://*.yahoo.com/",
     "http://d.yimg.com/autoc.finance.yahoo.com/",
+	"http://batstrading.com/",
     "notifications"
   ]
 }
