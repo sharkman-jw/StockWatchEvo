@@ -41,6 +41,21 @@ Quoter.decodeHexadecimal = function(text) {
 };
 
 /**
+ * Request a quote.
+ * @param {string} symbol
+ */
+Quoter.prototype.requestQuote = function(symbol) {
+  var xhr = new XMLHttpRequest();
+  var url = this.composeQuoteUrl(symbol);
+  debugUtils.log(url);
+  if (url) {
+    xhr.open("GET", url, true);
+    xhr.onreadystatechange = this._processSingleRequestReadyStateChange;
+    xhr.send(null);
+  }
+};
+
+/**
  * Request a group of quotes.
  * @param {array} symbols
  */
@@ -48,9 +63,19 @@ Quoter.prototype.requestGroupQuotes = function(symbols) {
   var xhr = new XMLHttpRequest();
   var url = this.composeGroupQuoteUrl(symbols);
   debugUtils.log(url);
-  xhr.open("GET", url, true);
-  xhr.onreadystatechange = this._processXMLHttpRequestReadyStateChange;
-  xhr.send(null);
+  if (url) {
+    xhr.open("GET", url, true);
+    xhr.onreadystatechange = this._processGroupRequestReadyStateChange;
+    xhr.send(null);
+  }
+};
+
+/**
+ * Compose the url for single quote.
+ * @param {string} symbol
+ */
+Quoter.prototype.composeQuoteUrl = function(symbol) {
+  return this.quoteUrl + symbol;
 };
 
 /**
@@ -61,12 +86,12 @@ Quoter.prototype.composeGroupQuoteUrl = function(symbols) {
   return this.quoteUrl + symbols.join(',');
 };
 
-Quoter.prototype._processXMLHttpRequestReadyStateChange = function() {
+Quoter.prototype._processSingleRequestReadyStateChange = function() {
   // override this
 };
 
-Quoter.prototype.requestSingleQuote = function(symbol) {
-  // TODO
+Quoter.prototype._processGroupRequestReadyStateChange = function() {
+  // override this
 };
 
 
@@ -87,9 +112,12 @@ function GoogleQuoter() {
 GoogleQuoter.prototype = new Quoter();
 GoogleQuoter.prototype.constructor = GoogleQuoter;
 
+GoogleQuoter.processResultStockDataCallBack = null;
+
 /**
  * Process result data from google.
  * @param {obj} data
+ * @note static method
  */
 GoogleQuoter.processResultData = function(data) {
   // create stock data from result data
@@ -98,6 +126,8 @@ GoogleQuoter.processResultData = function(data) {
   sd.exchange = data.e;
   sd.name = data.name;
   sd.last = numberUtils.parseNumberWithComma(data.l); // number
+  sd.bids = [];
+  sd.asks = [];
   sd.change = numberUtils.parseNumberWithComma(data.c); // number
   sd.percentChange = numberUtils.parseNumberWithComma(data.cp); // number
   sd.open = data.op;
@@ -118,7 +148,7 @@ GoogleQuoter.processResultData = function(data) {
     sd.extChange = numberUtils.parseNumberWithComma(data.ec); // number
     sd.extPercentChange = numberUtils.parseNumberWithComma(data.ecp); // number
     if (sd.exchange == 'NASDAQ' || sd.exchange == 'NYSE' ||
-      sd.exchange == 'AMEX') {
+      sd.exchange == 'NYSEAMEX') {
       if (data.elt.indexOf('PM') != -1)
         sd.tradingStatus = 'aft-hrs';
       else if (data.elt.indexOf('AM') != -1)
@@ -137,7 +167,9 @@ GoogleQuoter.processResultData = function(data) {
   sd.lastTick = 'e'; // string - 'e', 'u', 'd'
   sd.generateKeyTicker(); // string - exchange:symbol
   
-  if (Quoter.processResultStockDataCallBack)
+  if (GoogleQuoter.processResultStockDataCallBack)
+    GoogleQuoter.processResultStockDataCallBack(sd);
+  else if (Quoter.processResultStockDataCallBack)
     Quoter.processResultStockDataCallBack(sd);
 };
 
@@ -168,13 +200,13 @@ GoogleQuoter.prototype.requestGroupQuotes = function(symbols) {
  * The onreadystatechange() method to be assigned to a XMLHttpRequest obj.
  * @note "this" in this function is meant for the XMLHttpRequest obj
  */
-GoogleQuoter.prototype._processXMLHttpRequestReadyStateChange = function() {
+GoogleQuoter.prototype._processGroupRequestReadyStateChange = function() {
   if (this.readyState == 4) {
     var resultDataList = [];
     var good = false;
     
-    var text = this.responseText;
-    if (text) {
+    if (this.status == 200 && this.responseText) {
+      var text = this.responseText;
       // try decode hex if found the sign
       if (text.indexOf('\\x') != -1)
         text = Quoter.decodeHexadecimal(text);
@@ -187,17 +219,119 @@ GoogleQuoter.prototype._processXMLHttpRequestReadyStateChange = function() {
     }
     
     var n = resultDataList.length;
-    if (good && n > 0) {
+    if (good && n) {
       for (var i = 0; i < n; ++ i)
         GoogleQuoter.processResultData(resultDataList[i]);
     } else {
-      // TODO
+      debugUtils.log('GoogleQuoter failed.')
+      // TODO: handle request fail
     }
   }
 };
 
 
 
+/**
+ * @class GoogleQuoter, derived from Quoter
+ */
+function BatsQuoter() {
+  Quoter.call(this);
+  
+  this.source = 'BATX';
+  this.quoteUrl = 'http://batstrading.com/book/';
+};
 
+/**
+ * Inheritance
+ */
+BatsQuoter.prototype = new Quoter();
+BatsQuoter.prototype.constructor = BatsQuoter;
+
+/**
+ * Call back for followup process on result StockData object.
+ * @note static
+ */
+BatsQuoter.processResultStockDataCallBack = null;
+
+/**
+ * Process result data from BATS.
+ * @param {obj} data
+ * @param {string} market: exchange code
+ */
+BatsQuoter.processResultData = function(data, market) {
+  var sd = new StockData();
+  sd.assign({'symbol': data.symbol, 'exchange': market, 'bids': data.bids,
+    'asks': data.asks}, false);
+  
+  if (BatsQuoter.processResultStockDataCallBack)
+    BatsQuoter.processResultStockDataCallBack(sd);
+  else if (Quoter.processResultStockDataCallBack)
+    Quoter.processResultStockDataCallBack(sd);
+};
+
+/**
+ * Compose quote url using symbol and market.
+ */
+BatsQuoter.prototype.composeQuoteUrl = function(symbol, market) {
+  if (market)
+    return this.quoteUrl + symbol + '/data/?mkt=' + market;
+  else
+    return this.quoteUrl + symbol + '/data/';
+};
+
+/**
+ * Avoid group quotes for BATS Quoter
+ */
+BatsQuoter.prototype.composeGroupQuoteUrl = function(symbols) {
+  return null;
+};
+
+/**
+ * Request a quote.
+ * @param {string} symbol
+ * @param {string} market: optional, e.g.: NYSE, NASDAQ, NYSEAMEX
+ */
+BatsQuoter.prototype.requestQuote = function(symbol, market) {
+  var xhr = new XMLHttpRequest();
+  var url = this.composeQuoteUrl(symbol, market);
+  debugUtils.log(url);
+  if (url) {
+    xhr.quoteTarget = {'symbol': symbol, 'market': market};
+    xhr.open("GET", url, true);
+    xhr.onreadystatechange = this._processSingleRequestReadyStateChange;
+    xhr.send(null);
+  }
+};
+
+/**
+ * The onreadystatechange() method to be assigned to a XMLHttpRequest obj.
+ * @note "this" in this function is meant for the XMLHttpRequest obj
+ */
+BatsQuoter.prototype._processSingleRequestReadyStateChange = function() { 
+  if (this.readyState == 4) {
+    var resultData = null;
+    var good = false;
+    
+    if (this.status == 200 && this.responseText) {
+      var text = this.responseText;
+      // try decode hex if found the sign
+      if (text.indexOf('\\x') != -1)
+        text = Quoter.decodeHexadecimal(text);
+      // try parse JSON data
+      try {
+        resultData = JSON.parse(text).data;
+        good = true;
+      } catch (e) {
+      }
+    }
+    
+    if (good && resultData) {
+      BatsQuoter.processResultData(resultData, this.quoteTarget.market);
+    } else {
+      debugUtils.log('BatsQuoter failed.')
+      // TODO: handle fail
+    }
+  }
+};
 
 
