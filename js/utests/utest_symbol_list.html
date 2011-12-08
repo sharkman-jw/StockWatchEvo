@@ -1,0 +1,234 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+<script src="../utils.js" type="text/javascript"></script>
+<script src="../symbol_list.js" type="text/javascript"></script>
+<script>
+$(document).ready(function(){
+
+var lsu = localStorageUtils;
+
+function createTestSL1() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  sl.add("NASDAQ:YHOO");
+  sl.add("NYSE:T");
+  sl.add("NYSE:BAC");
+  sl.add("NASDAQ:SINA");
+  sl.add("NYSE:A");
+  return sl;
+};
+
+/**
+ *
+ */
+module("Constructor");
+
+test("constructor should generate correct LS key", function() {
+  var sl = new SymbolList("Watch", 30);
+  equal(sl.lsKey, "l_watch");
+  
+  sl = new SymbolList("Recent Quotes", 10);
+  equal(sl.lsKey, "l_recent_quotes");
+});
+
+module("Save and retrieve");
+
+test("it should correctly save SymbolList object", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.save();
+  equal(lsu.get(sl.lsKey), JSON.stringify(sl));
+});
+
+test("it should correctly retrieve SymbolList object", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.save();
+  var sl2 = SymbolList.retrieve(sl.name);
+  equal(JSON.stringify(sl2), JSON.stringify(sl));
+});
+
+test("it should correctly retrieve SymbolList object using LS key", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.save();
+  var sl2 = SymbolList.retrieveByLSKey(sl.lsKey);
+  equal(JSON.stringify(sl2), JSON.stringify(sl));
+});
+
+module("Add");
+
+test("it should add symbols to list", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  ok(sl.contains("NYSE:RENN") && 
+    sl.contains("NYSE:C") && 
+    sl.contains("NASDAQ:AAPL") && 
+    sl.contains("NASDAQ:GOOG"), "4 symbols are added");
+  equal(sl.symbols.length, 4, "symbol list length is 4");
+});
+
+test("it should avoid adding duplications", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:C");
+  sl.add("NYSE:RENN");
+  equal(sl.symbols.length, 2, "symbol list length is 2");
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:RENN");
+  equal(sl.symbols.length, 2, "symbol list length is still 2");
+});
+
+test("it should avoid adding if limit is reached", function() {
+  var sl = new SymbolList("Recent Quotes", 3);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  ok(sl.contains("NYSE:RENN") && 
+    sl.contains("NYSE:C") && 
+    sl.contains("NASDAQ:AAPL") && 
+    !sl.contains("NASDAQ:GOOG") &&
+    sl.symbols.length == 3, "The last symbol wasn't added");
+});
+
+module("Del");
+
+test("it should delete given symbol from list", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  ok(sl.contains("NYSE:RENN") && 
+    sl.contains("NYSE:C") && 
+    sl.contains("NASDAQ:AAPL") && 
+    sl.contains("NASDAQ:GOOG"), "4 symbols are added");
+  equal(sl.symbols.length, 4, "symbol list length is 4");
+  sl.del("NYSE:BAC");
+  ok(sl.contains("NYSE:RENN") && 
+    sl.contains("NYSE:C") && 
+    sl.contains("NASDAQ:AAPL") && 
+    sl.contains("NASDAQ:GOOG") &&
+    sl.symbols.length == 4, "list has not changed");
+});
+
+test("it should have no changes upon deleting non existing symbol", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  ok(sl.contains("NYSE:C") && sl.symbols.length == 4,
+    "NYSE:C is in list; list length is 4");
+  sl.del("NYSE:C");
+  ok(!sl.contains("NYSE:C") && sl.symbols.length == 3,
+    "NYSE:C is not in list anymore; and list length is 3");
+});
+
+module("Move symbol");
+
+test("it can move a symbol up in list", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  sl.add("NASDAQ:YHOO");
+  ok(sl.indexOf("NYSE:RENN") == 0 && sl.indexOf("NYSE:C") == 1,
+    sl.json());
+  sl.moveSymbolUp("NYSE:C", 1);
+  ok(sl.indexOf("NYSE:RENN") == 1 && sl.indexOf("NYSE:C") == 0,
+    sl.json());
+  
+  ok(sl.indexOf("NASDAQ:GOOG") == 3,
+    sl.json());
+  sl.moveSymbolUp("NASDAQ:GOOG", 2);
+  ok(sl.indexOf("NASDAQ:GOOG") == 1,
+    sl.json());
+});
+
+test("it moves a symbol to front if we try to move the symbol up too much",
+function() {
+  var sl = createTestSL1();
+  ok(sl.indexOf("NYSE:T") == 5, "T is the 6th symbol: " + sl.json());
+  
+  sl.moveSymbolUp("NYSE:T", 10);
+  ok(sl.indexOf("NYSE:T") == 0, "T is the 1st now: " + sl.json());
+  
+  sl.moveSymbolUp("NYSE:T", 1);
+  ok(sl.indexOf("NYSE:T") == 0, "T is still the 1st: " + sl.json());
+});
+
+test("it can move a symbol down in list", function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  sl.add("NASDAQ:YHOO");
+  ok(sl.indexOf("NYSE:RENN") == 0 && sl.indexOf("NYSE:C") == 1,
+    sl.json());
+  sl.moveSymbolDown("NYSE:RENN", 1);
+  ok(sl.indexOf("NYSE:RENN") == 1 && sl.indexOf("NYSE:C") == 0,
+    sl.json());
+  
+  sl.moveSymbolDown("NYSE:RENN", 2);
+  ok(sl.indexOf("NYSE:RENN") == 3,
+    sl.json());
+});
+
+test("it moves a symbol to end if we try to move the symbol down too much",
+function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  sl.add("NASDAQ:YHOO");
+  ok(sl.indexOf("NYSE:C") == 1, "C is the 2nd symbol: " + sl.json());
+  
+  sl.moveSymbolDown("NYSE:C", 8);
+  ok(sl.indexOf("NYSE:C") == 4, "C is the last now: " + sl.json());
+  
+  sl.moveSymbolDown("NYSE:C", 1);
+  ok(sl.indexOf("NYSE:C") == 4, "C is still the last: " + sl.json());
+});
+
+test("it moves symbol in opposite direction if input steps is negative",
+function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  sl.add("NASDAQ:YHOO");
+  ok(sl.indexOf("NYSE:C") == 1, "C is the 2nd symbol: " + sl.json());
+  
+  sl.moveSymbolDown("NYSE:C", -8);
+  ok(sl.indexOf("NYSE:C") == 0, "C is the 1st now: " + sl.json());
+  
+  sl.moveSymbolUp("NYSE:C", -3);
+  ok(sl.indexOf("NYSE:C") == 3, "C is the 4th symbol: " + sl.json());
+});
+
+});
+
+</script>
+  
+</head>
+<body>
+ <h1 id="qunit-header">utils.js unit testing</h1>
+ <h2 id="qunit-banner"></h2>
+ <div id="qunit-testrunner-toolbar"></div>
+ <h2 id="qunit-userAgent"></h2>
+ <ol id="qunit-tests"></ol>
+ <div id="qunit-fixture">test markup, will be hidden</div>
+</body>
+</html>

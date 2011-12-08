@@ -1,0 +1,276 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+<script src="../utils.js" type="text/javascript"></script>
+<script src="../symbol_list.js" type="text/javascript"></script>
+<script>
+$(document).ready(function(){
+
+var lsu = localStorageUtils;
+lsu.clearAll();
+
+/**
+ *
+ */
+module("Constructor");
+
+test("constructor should generate the correct LS key", function() {
+  var slm = new SymbolListManager();
+  equal(slm.lsKey, "_slm");
+});
+
+module("Save and retrieve");
+
+test("it should correctly save SymbolList object", function() {
+  lsu.clearAll();
+  var slm = new SymbolListManager();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  sl1.save();
+  slm.add(sl1);
+  slm.save();
+  equal(lsu.get(slm.lsKey), slm.json(), 'The full json: ' + slm.json(true));
+});
+
+test("it should correctly retrieve SymbolList object", function() {
+  lsu.clearAll();
+  var slm = new SymbolListManager();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  sl1.save();
+  slm.add(sl1);
+  slm.save();
+  var slm2 = SymbolListManager.retrieve();
+  equal(JSON.stringify(slm2), JSON.stringify(slm));
+});
+
+module("Add");
+
+test("it should be able to add symbol list under management", function() {
+  lsu.clearAll();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("NIPPON");
+  sl2.add("Shanghai");
+  
+  var slm = new SymbolListManager();
+  slm.add(sl1);
+  slm.add(sl2);
+  equal(slm.size(), 2);
+  ok(slm.contains(sl1.name) && slm.contains(sl2.name));
+});
+
+test("it should avoid adding duplications", function() {
+  lsu.clearAll();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("NIPPON");
+  sl2.add("Shanghai");
+  
+  var slm = new SymbolListManager();
+  slm.add(sl1);
+  slm.add(sl2);
+  equal(slm.size(), 2);
+  slm.add(sl2);
+  equal(slm.size(), 2);
+});
+
+module("Del");
+
+test("it should delete symbol list by name", function() {
+  lsu.clearAll();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("NIPPON");
+  sl2.add("Shanghai");
+  
+  sl1.save();
+  sl2.save();
+  
+  var slm = new SymbolListManager();
+  slm.add(sl1);
+  slm.add(sl2);
+  
+  slm.del(sl1.name);
+  equal(slm.size(), 1);
+  var sl = SymbolList.retrieve(sl1.name);
+  ok(slm.get(sl1.name) == null && sl != null,
+    'sl1 is not in slm but still in ls: ' + sl.json());
+  
+  slm.del(sl2.name, true);
+  equal(slm.size(), 0);
+  sl = SymbolList.retrieve(sl2.name);
+  ok(slm.get(sl2.name) == null && sl == null,
+    'sl2 is removed from both ls and slm');
+});
+
+test("it should have no changes upon deleting non existing symbol list",
+function() {
+  lsu.clearAll();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("NIPPON");
+  sl2.add("Shanghai");
+  
+  var slm = new SymbolListManager();
+  slm.add(sl1);
+  slm.add(sl2);
+  
+  slm.del('wtf');
+  equal(slm.size(), 2);
+});
+
+module("Contains");
+
+test("it should be able to check if a symbol list is under management",
+function() {
+  lsu.clearAll();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("NIPPON");
+  sl2.add("Shanghai");
+  
+  var slm = new SymbolListManager();
+  slm.add(sl1);
+  slm.add(sl2);
+  
+  ok(slm.contains(sl1), sl1.name + " is under management");
+  ok(slm.contains(sl2.name), sl2.name + " is under management");
+  ok(!slm.contains("What The Fuck"), "What The Fuck is not under management");
+});
+
+module("Get");
+
+test("it should be able to retrieve symbol list by name",
+function() {
+  lsu.clearAll();
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("NIPPON");
+  sl2.add("Shanghai");
+  
+  sl1.save();
+  
+  var slm = new SymbolListManager();
+  slm.add(sl1);
+  slm.add(sl2);
+  
+  // retrieve from local storage
+  var sl = slm.get(sl1.name);
+  equal(sl.json(), sl1.json());
+  
+  // retrieve from runtime obj
+  sl = slm.get(sl2.name);
+  equal(sl, sl2);
+  equal(sl.json(), sl2.json());
+});
+
+test("it should be able to reload itself with symbol lists from local storage",
+function() {
+  lsu.clearAll();
+  
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("NYSE:RENN");
+  sl1.add("NYSE:C");
+  sl1.add("NASDAQ:AAPL");
+  sl1.add("NASDAQ:GOOG");
+  
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("NIPPON");
+  sl2.add("Shanghai");
+  
+  var sl3 = new SymbolList("Watch", 10);
+  sl3.add("BAC");
+  sl3.add("AMR");
+  
+  sl1.save();
+  sl2.save()
+  
+  var slm = new SymbolListManager();
+  slm.add(sl3);
+  slm.reloadFromLS();
+  
+  equal(slm.size(), 2);
+  ok(slm.contains(sl1) && slm.contains(sl2) && !slm.contains(sl3),
+    "sl1 and sl2 is in slm, sl3 is not.");
+});
+
+test("it should be able to populate a list of symbols that contains all \
+  symbols from contained symbol lists without duplications",
+function() {
+  lsu.clearAll();
+  
+  var sl1 = new SymbolList("Recent Quotes", 10);
+  sl1.add("S1");
+  sl1.add("S2");
+  sl1.add("S3");
+  sl1.add("S4");
+  
+  var sl2 = new SymbolList("Global Markets", 10);
+  sl2.add("S3");
+  sl2.add("S7");
+  
+  var sl3 = new SymbolList("Watch", 10);
+  sl3.add("S5");
+  sl3.add("S6");
+  sl3.add("S7");
+  sl3.add("S2");
+  
+  sl1.save();
+  sl2.save()
+  
+  var slm = new SymbolListManager();
+  slm.reloadFromLS();
+  slm.add(sl3);
+  
+  var symbols = slm.getSymbols();
+  equal(symbols.length, 7, symbols);
+});
+
+});
+
+</script>
+  
+</head>
+<body>
+ <h1 id="qunit-header">utils.js unit testing</h1>
+ <h2 id="qunit-banner"></h2>
+ <div id="qunit-testrunner-toolbar"></div>
+ <h2 id="qunit-userAgent"></h2>
+ <ol id="qunit-tests"></ol>
+ <div id="qunit-fixture">test markup, will be hidden</div>
+</body>
+</html>
