@@ -8,10 +8,11 @@
 var bg = (function() {
   
   var lsu = localStorageUtils;
-  var sm = settingsManager;
   var subs = symbolSubscription;
   
+  var sdm = new StockDataManager();
   var gQuoter = new GoogleQuoter();
+  var batsQuoter = new BatsQuoter();
   
   /**
    * Callback for Quoter after getting quote from providers and now process the
@@ -19,6 +20,19 @@ var bg = (function() {
    */
   Quoter.processResultStockDataCallBack = function(stockData) {
     stockData.save();
+  };
+
+  /**
+   * Callback for BatsQuoter after getting quote from BATS and now process the
+   * StockData object.
+   */
+  BatsQuoter.processResultStockDataCallBack = function(sd_in) {
+    debugUtils.logObj(sd_in);
+    var sd = StockData.retrieve(sd_in.keyTicker);
+    sd.bids = sd_in.bids;
+    sd.asks = sd_in.asks;
+    sd.save();
+    debugUtils.logObj(sd);
   };
   
   var processUpdate = function() {
@@ -28,14 +42,14 @@ var bg = (function() {
    * Initialize data.
    */
   var initOtherData = function() {
-    clearStockData();
+    sdm.clearAll();
     
     // refresh data (on/off)
     lsu.save('refresh_data', '1');
     
     // number of recent quotes to be stored
     var recentQuotesLimit = 12;
-    var setting = sm.getSetting('data_refresh_interval');
+    var setting = settingsManager.getSetting('data_refresh_interval');
     if (setting) {
       recentQuotesLimit = Math.floor(120/setting.getValue());
       if (recentQuotesLimit < 4)
@@ -60,7 +74,7 @@ var bg = (function() {
    */
   var initSettings = function() {
     // data refresh
-    sm.createOptionSetting('data_refresh_interval',
+    settingsManager.createOptionSetting('data_refresh_interval',
       [10, 15, 20, 30, 45, 60], 15);
   };
   
@@ -71,18 +85,17 @@ var bg = (function() {
     // refresh if data refresh is on
     if (lsu.getInt('refresh_data', 0)) {
       gQuoter.requestGroupQuotes(subs.symbols);
+      batsQuoter.requestQuote("AAPL", "NASDAQ");
     }
     // scehdule next refresh
-    var setting = sm.getSetting('data_refresh_interval');
+    var setting = settingsManager.getSetting('data_refresh_interval');
     var timeout = 1000 * (setting ? setting.getValue() : 10);
     //window.setTimeout(loopRefreshQuotes, timeout);
   };
   
-  var clearStockData = function() {
-    return lsu.clearByPattern(/^(sd|rq)_(.+)$/i);
-  };
-  
   return {
+    stockDataManager: sdm,
+    
     /**
      *
      */
