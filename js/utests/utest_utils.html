@@ -235,11 +235,11 @@ test("getObj", function() {
   equal(lsu.getObj('p2', null, Ninjia.prototype).info(), p2.info());
 });
 
-test("clear", function() {
+test("clearAll", function() {
   var lsu = localStorageUtils;
-  lsu.saveStr('key1', 'val1')
-  lsu.saveStr('key2', 'val2')
-  lsu.saveStr('key3', 'val3')
+  lsu.saveStr('key1', 'val1');
+  lsu.saveStr('key2', 'val2');
+  lsu.saveStr('key3', 'val3');
   lsu.saveObj('key4', new Person('Xingyu', 26));
   lsu.clearAll();
   
@@ -250,15 +250,35 @@ test("clear", function() {
   equal(count, 0);
 });
 
+test("getByPattern", function() {
+  var lsu = localStorageUtils;
+  lsu.clearAll();
+  lsu.saveStr('str1', 'val1');
+  lsu.saveStr('str2', 'val2');
+  lsu.saveStr('str3', 'val3');
+  var obj = new Person('Xingyu', 26);
+  lsu.saveObj('obj1', obj);
+  lsu.saveNumber('num1', 123.2)
+  lsu.saveNumber('num2', 77)
+  
+  var items = lsu.getByPattern(/^(num|obj)/i);
+  equal(items.obj1, JSON.stringify(obj));
+  equal(items.num1, '123.2');
+  equal(items.num2, '77');
+  
+  items = lsu.getByPattern(/wtf/);
+  equal(JSON.stringify(items), JSON.stringify({}));
+});
+
 test("clearByPattern", function() {
   var lsu = localStorageUtils;
   lsu.clearAll();
-  lsu.saveStr('str1', 'val1')
-  lsu.saveStr('str2', 'val2')
-  lsu.saveStr('str3', 'val3')
+  lsu.saveStr('str1', 'val1');
+  lsu.saveStr('str2', 'val2');
+  lsu.saveStr('str3', 'val3');
   lsu.saveObj('obj1', new Person('Xingyu', 26));
-  lsu.saveNumber('num1', 123.2)
-  lsu.saveNumber('num2', 77)
+  lsu.saveNumber('num1', 123.2);
+  lsu.saveNumber('num2', 77);
   
   var n = lsu.clearByPattern(/^(num|obj)/i);
   equal(n, 3);

@@ -19,18 +19,18 @@ module("Setting");
 
 test("save", function() {
   var s1 = new Setting("Data Refresh", "On");
+	equal(s1.lsKey, "_data_refresh");
   s1.save();
-  var s2 = lsu.getObj(s1.key, null, Setting.prototype);
-  equal(s2.key, s1.key);
-  equal(s2.value, s1.value);
+  var s2 = lsu.getObj(s1.lsKey, null, Setting.prototype);
+  equal(JSON.stringify(s2), JSON.stringify(s1), "lsKey: " + s2.lsKey);
 });
 
 test("remove", function() {
   var s1 = new Setting("Data Refresh", "On");
   s1.save();
-  var s2 = lsu.getObj(s1.key, null, Setting.prototype);
+  var s2 = lsu.getObj(s1.lsKey, null, Setting.prototype);
   s2.remove();
-  s2 = lsu.getObj(s1.key, null, Setting.prototype);
+  s2 = lsu.getObj(s1.lsKey, null, Setting.prototype);
   equal(s2, null);
 });
 
@@ -39,7 +39,7 @@ test("setValue", function() {
   s1.save();
   s1.setValue("Off");
   equal(s1.value, "Off");
-  var s2 = lsu.getObj(s1.key, null, Setting.prototype);
+  var s2 = Setting.retrieve("Data Refresh");
   equal(s2.value, "Off");
 });
 
@@ -168,23 +168,20 @@ test("getSetting", function() {
   s1.save();
   
   var s = sm.getSetting("Data Refresh");
-  equal(s.key, s1.key);
-  equal(s.getValue(), s1.getValue());
+	equal(JSON.stringify(s), JSON.stringify(s1));
   
   var s2 = new Setting("Run", false);
   s2.save();
   
   s = sm.getSetting("Run");
-  equal(s.key, s2.key);
-  equal(s.getValue(), s2.getValue());
+	equal(JSON.stringify(s), JSON.stringify(s2));
   
   var s3 = new OptionSetting("Weekdays",
     [0, 1, 2, 3, 4, 5, 6], 0);
   s3.save();
   
   s = sm.getSetting("Weekdays");
-  equal(s.key, s3.key);
-  equal(s.getValue(), s3.getValue());
+	equal(JSON.stringify(s), JSON.stringify(s3));
 });
 
 test("createSetting", function() {

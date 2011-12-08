@@ -2,31 +2,54 @@
 <html>
 <head>
 <script src="http://code.jquery.com/jquery-latest.js"></script>
-<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
-<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
-<script src="../stock_data.js" type="text/javascript"></script>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css"
+ 	type="text/css" media="screen" />
+<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js">
+</script>
 <script src="../utils.js" type="text/javascript"></script>
+<script src="../stock_data.js" type="text/javascript"></script>
 <script>
 $(document).ready(function(){
 
-module("Member methods");
+module("StockData: Static Methods");
+
+test("createFromData", function() {
+  var data = { symbol: 'AAPL', exchange: 'NASDAQ' };
+  var sd = StockData.createFromData(data);
+  equal(sd.keyTicker, "NASDAQ:AAPL", "We expect value to be NASDAQ:AAPL" );
+  ok(true, JSON.stringify(sd));
+});
+
+test("retrieve", function() {
+	localStorageUtils.clearAll();
+	var data = { symbol: 'AAPL', exchange: 'NASDAQ' };
+  var sd = StockData.createFromData(data);
+  sd.save();
+  var sd2 = StockData.retrieve(sd.keyTicker);
+  equal(JSON.stringify(sd2), JSON.stringify(sd));
+});
+
+
+
+module("StockData: Member Methods");
 
 test("save", function() {
-  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
-  var sd = StockData.createFromGoogleData(data);
+	localStorageUtils.clearAll();
+  var sd = StockData.createFromData({symbol: 'AAPL', exchange: 'NASDAQ'});
   sd.save();
-  var text = localStorageUtils.getStr('sd_' + sd.keyTicker, null);
+  var text = localStorageUtils.getStr(sd.lsKey, null);
   equal(text, JSON.stringify(sd));
 });
 
 test("remove", function() {
-  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
-  var sd = StockData.createFromGoogleData(data);
+	localStorageUtils.clearAll();
+  var sd = StockData.createFromData({symbol: 'AAPL', exchange: 'NASDAQ'});
   sd.save();
-  var text = localStorageUtils.getStr('sd_' + sd.keyTicker, null);
-  ok(text);
-  sd.remove();
-  text = localStorageUtils.getStr('sd_' + sd.keyTicker, null);
+  var text = localStorageUtils.getStr(sd.lsKey, null);
+  equal(text, JSON.stringify(sd));
+	
+	sd.remove();
+	text = localStorageUtils.getStr(sd.lsKey, null);
   equal(text, null);
 });
 
@@ -50,27 +73,36 @@ test("generateKeyTicker", function() {
 });
 
 test("realLastPrice", function() {
-  var data = {t:'RENN',e:'NYSE',el:'4.25',elt:'Nov 22, %:51PM EST',l:'4.02'};
-  var sd = StockData.createFromGoogleData(data);
+  var sd = StockData.createFromData({symbol: 'RENN', exchange: 'NYSE',
+		extLast: 4.25, lastTradeTime: 'Nov 22, 4:51PM EST', last: 4.02,
+		extHours: true});
   equal(sd.last, 4.02, 'last price');
   equal(sd.extLast, 4.25, 'ext last price');
   equal(sd.realLastPrice(), 4.25, 'real last price');
 });
 
 test("realChange", function() {
-  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
-  var sd = StockData.createFromGoogleData(data);
-  equal(sd.change, parseFloat(data['c']), 'change');
-  equal(sd.extChange, parseFloat(data['ec']), 'ext change');
-  equal(sd.realChange(), parseFloat(data['ec']), 'real change');
+  var data = {symbol: 'AAPL', exchange: 'NASDAQ',
+		extLast: 376.06, lastTradeTime: 'Nov 22, 4:56PM EST', last: 376.51,
+		change: 7.50, extChange: -0.45, extHours: true};
+  var sd = StockData.createFromData(data);
+
+  equal(sd.change, data.change, 'change');
+  equal(sd.extChange, data.extChange, 'ext change');
+  equal(sd.realChange(), data.extChange, 'real change');
 });
 
 test("realPercentChange", function() {
-  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
-  var sd = StockData.createFromGoogleData(data);
-  equal(sd.percentChange, parseFloat(data['cp']), 'percent change');
-  equal(sd.extPercentChange, parseFloat(data['ecp']), 'ext percent change');
-  equal(sd.realPercentChange(), parseFloat(data['ecp']), 'real percent change');
+  var data = {symbol: 'AAPL', exchange: 'NASDAQ',
+		extLast: 376.06, lastTradeTime: 'Nov 22, 4:56PM EST', last: 376.51,
+		change: 7.50, extChange: -0.45, percentChange: 2.03,
+		extPercentChange: -0.12, extHours: true};
+  var sd = StockData.createFromData(data);
+
+  equal(sd.percentChange, data.percentChange, 'percent change');
+  equal(sd.extPercentChange, data.extPercentChange, 'ext percent change');
+  equal(sd.realPercentChange(), data.extPercentChange,
+ 	'real percent change');
 });
 
 test("calcLastTick", function() {
@@ -90,31 +122,90 @@ test("toString", function() {
   equal('NYSE:RENN', sd.keyTicker);
 });
 
-module("Static methods");
+
+
+module("RecentQuotes");
+
+test("save", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  rq.save();
+  equal(localStorageUtils.get("rq_NYSE:RENN"), JSON.stringify(rq));
+});
 
 test("retrieve", function() {
-  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
-  var sd = StockData.createFromGoogleData(data);
-  sd.save();
-  var sd2 = StockData.retrieve(sd.keyTicker);
-  equal(JSON.stringify(sd2), JSON.stringify(sd));
-  equal(sd2.toString(), sd.toString());
+  var rq = new RecentQuotes("NYSE:RENN");
+  rq.save();
+  var rq2 = RecentQuotes.retrieve("NYSE:RENN");
+  equal(JSON.stringify(rq2), JSON.stringify(rq));
 });
 
-test("createFromData", function() {
-  var data = { symbol: 'AAPL', exchange: 'NASDAQ' };
-  var sd = StockData.createFromData(data);
-  equal(sd.keyTicker, "NASDAQ:AAPL", "We expect value to be NASDAQ:AAPL" );
-  ok(true, JSON.stringify(sd));
+test("add", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  RecentQuotes.setLimit(3);
+  rq.add(3.9);
+  rq.add(3.89, 3);
+  
+  // test if quotes are saved
+  equal(JSON.stringify(rq.quotes), JSON.stringify([3.9, 3.89]));
+  
+  // test last tick
+  equal(rq.lastTick, 'd');
+  rq.add(3.89, 3);
+  equal(rq.lastTick, 'e');
+  rq.add(3.95, 3);
+  equal(rq.lastTick, 'u');
+  
+  // test last
+  equal(rq.last, 3.95);
+  
+  rq.add(3.92, 3);
+  
+  // test if oldest quotes are deleted
+  equal(JSON.stringify(rq.quotes), JSON.stringify([3.89, 3.95, 3.92]));
+  
+  // test trend
+  equal(rq.trend, 'u');
+  rq.add(3.92);
+  equal(rq.trend, 'e');
+  rq.add(3.9);
+  equal(rq.trend, 'd');
+  
+  RecentQuotes.setLimit(12);
 });
 
-test("createFromGoogleData", function() {
-  var data = { "id": "22144" ,"t" : "AAPL" ,"e" : "NASDAQ" ,"l" : "376.51" ,"l_cur" : "376.51" ,"s": "2" ,"ltt":"4:00PM EST" ,"lt" : "Nov 22, 4:00PM EST" ,"c" : "+7.50" ,"cp" : "2.03" ,"ccol" : "chg" ,"el": "376.06" ,"el_cur": "376.06" ,"elt" : "Nov 22, 4:56PM EST" ,"ec" : "-0.45" ,"ecp" : "-0.12" ,"eccol" : "chr" ,"div" : "" ,"yld" : "" ,"eo" : "" ,"delay": "" ,"op" : "371.02" ,"hi" : "377.93" ,"lo" : "370.94" ,"vo" : "14.31M" ,"avvo" : "18.34M" ,"hi52" : "426.70" ,"lo52" : "305.87" ,"mc" : "349.93B" ,"pe" : "13.61" ,"fwpe" : "" ,"beta" : "1.22" ,"eps" : "27.67" ,"name" : "Apple Inc." ,"type" : "Company" };
-  var sd = StockData.createFromGoogleData(data);
-  equal(sd.keyTicker, "NASDAQ:AAPL", "We expect value to be NASDAQ:AAPL" );
-  ok(true, JSON.stringify(sd));
-  var lsu = localStorageUtils;
-  lsu.saveObj(sd.keyTicker, sd);
+test("average", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  equal(rq.average(), 0);
+  rq.add(4);
+  rq.add(5);
+  rq.add(6);
+  rq.add(7);
+  rq.add(8);
+  equal(rq.average(), 6);
+});
+
+test("clear", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  rq.add(4);
+  rq.add(5);
+  rq.add(6);
+  rq.add(7);
+  rq.add(8);
+  rq.clear();
+  equal(rq.quotes.length, 0);
+  equal(rq.last, null);
+});
+
+test("average() speed", function() {
+  var rq = new RecentQuotes("NYSE:RENN");
+  for (var i = 0; i < 100; ++ i) {
+    rq.add(4);
+    rq.add(5);
+    rq.add(6);
+    rq.add(7);
+    rq.add(8);
+  }
+  ok(true, "calculated at least 500 times");
 });
 
 });
