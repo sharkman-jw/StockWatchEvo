@@ -1,0 +1,354 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+<script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+<script src="../utils.js" type="text/javascript"></script>
+<script src="../stock_data.js" type="text/javascript"></script>
+<script src="../stock_data_manager.js" type="text/javascript"></script>
+<script>
+$(document).ready(function(){
+
+var lsu = localStorageUtils;
+lsu.clearAll();
+
+/**
+ *
+ */
+module("SDMItem");
+
+test("Save", function() {
+  lsu.clearAll();
+  
+  var sd = new StockData();
+  sd.assign({symbol:'C',exchange:'NYSE'});
+  var rq = new RecentQuotes(sd.keyTicker);
+  
+  var item = new SDMItem();
+  item.stockData = sd;
+  item.recentQuotes = rq;
+  item.save();
+  
+  equal(StockData.retrieve(sd.keyTicker).json(), sd.json());
+  equal(RecentQuotes.retrieve(sd.keyTicker).json(), rq.json());
+});
+
+test("Remove", function() {
+  lsu.clearAll();
+  
+  var sd = new StockData();
+  sd.assign({symbol:'C',exchange:'NYSE'});
+  var rq = new RecentQuotes(sd.keyTicker);
+  
+  var item = new SDMItem();
+  item.stockData = sd;
+  item.recentQuotes = rq;
+  item.save();
+  
+  item.remove();
+  
+  equal(StockData.retrieve(sd.keyTicker), null);
+  equal(RecentQuotes.retrieve(sd.keyTicker), null);
+});
+
+module("Clear local storage");
+
+test("It clears and only clears individual stock data.", function() {
+  lsu.clearAll();
+  
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  sd1.save();
+  var sd2 = new StockData();
+  sd2.assign({symbol:'RENN',exchange:'NYSE'});
+  sd2.save();
+  
+  var rq = new RecentQuotes(sd1.keyTicker);
+  rq.save();
+  rq = new RecentQuotes(sd2.keyTicker);
+  rq.save();
+  
+  lsu.save("key1", "value1");
+  lsu.save("this_is_a_number", 7.2);
+  
+  StockDataManager.clearAllFromLS();
+  
+  ok(StockData.retrieve(sd1.keyTicker) == null &&
+    StockData.retrieve(sd2.keyTicker) == null &&
+    RecentQuotes.retrieve(sd1.keyTicker) == null &&
+    RecentQuotes.retrieve(sd2.keyTicker) == null &&
+    lsu.get("key1") == "value1" &&
+    lsu.getNumber("this_is_a_number") == 7.2
+    , "Stock data cleared");
+});
+
+module("Add");
+
+test("it should be able to add StockData, RecentQuotes ..", function() {
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add if not exist
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  ok(slm.items[sd1.keyTicker].stockData == sd1 &&
+    slm.size() == 1, sd1.json());
+  
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  ok(slm.items[sd2.keyTicker].stockData == sd2 &&
+    slm.size() == 2, sd2.json());
+  
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  ok(slm.items[rq1.keyTicker].recentQuotes == rq1 &&
+    slm.size() == 2, rq1.json());
+  
+  // Update if already existing
+  sd2 = new StockData();
+  sd2.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd2);
+  ok(slm.items[sd1.keyTicker].stockData == sd2 &&
+    slm.size() == 2, sd2.json());
+});
+
+module("Get");
+
+test("it should be able to get data from the manager", function() {
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  
+  // Get
+  equal(slm.getStockData(sd1.keyTicker), sd1);
+  equal(slm.getRecentQuotes(rq1.keyTicker), rq1);
+});
+
+module("Del");
+
+test("it should delete stock data by key ticker", function() {
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  sd1.save();
+  
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  sd2.save();
+  
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  rq1.save();
+  
+  var rq2 = new RecentQuotes(sd2.keyTicker);
+  slm.add(rq2);
+  rq2.save();
+  
+  // Del
+  slm.del(sd1.keyTicker);
+  ok(slm.getStockData(sd1.keyTicker) == null &&
+    slm.getRecentQuotes(sd1.keyTicker) == null &&
+    !slm.items.hasOwnProperty(sd1.keyTicker) &&
+    StockData.retrieve(sd1.keyTicker) != null &&
+    RecentQuotes.retrieve(sd1.keyTicker) != null &&
+    slm.size() == 1);
+  
+  // Del & remove from local storage
+  slm.del(sd2.keyTicker, true);
+  ok(slm.getStockData(sd2.keyTicker) == null &&
+    slm.getRecentQuotes(sd2.keyTicker) == null &&
+    !slm.items.hasOwnProperty(sd2.keyTicker) &&
+    StockData.retrieve(sd2.keyTicker) == null &&
+    RecentQuotes.retrieve(sd2.keyTicker) == null &&
+    slm.size() == 0);
+});
+
+test("it should have no changes upon deleting non existing stock",
+function() {
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  sd1.save();
+  
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  sd2.save();
+  
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  rq1.save();
+  
+  var rq2 = new RecentQuotes(sd2.keyTicker);
+  slm.add(rq2);
+  rq2.save();
+  
+  // Del
+  var sd3 = new StockData();
+  sd3.assign({symbol:'AAPL',exchange:'NASDAQ'});
+  sd3.save();
+  
+  slm.del(sd3.keyTicker);
+  ok(slm.size() == 2, "no change to manager")
+  
+  slm.del(sd3.keyTicker, true);
+  ok(slm.size() == 2 && StockData.retrieve(sd3.keyTicker) != null,
+    "no change to manager nor local storage")
+});
+
+module("Save all");
+
+test("it should be able to save all contained data to local storage",
+function() {
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  var rq2 = new RecentQuotes(sd2.keyTicker);
+  slm.add(rq2);
+  
+  ok(StockData.retrieve(sd1.keyTicker) == null &&
+    StockData.retrieve(sd2.keyTicker) == null &&
+    RecentQuotes.retrieve(sd1.keyTicker) == null &&
+    RecentQuotes.retrieve(sd2.keyTicker) == null,
+    "nothing was in local storage");
+  
+  // Save
+  slm.saveAll();
+  
+  ok(StockData.retrieve(sd1.keyTicker) != null &&
+    StockData.retrieve(sd2.keyTicker) != null &&
+    RecentQuotes.retrieve(sd1.keyTicker) != null &&
+    RecentQuotes.retrieve(sd2.keyTicker) != null,
+    "data was saved to local storage");
+});
+
+module("Clear");
+
+test("it should clear all contained runtime data",
+function() {
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  var rq2 = new RecentQuotes(sd2.keyTicker);
+  slm.add(rq2);
+  slm.saveAll();
+  
+  // Clear
+  slm.clear();
+  ok(slm.size() == 0 && JSON.stringify(slm.items) == JSON.stringify({}) &&
+    StockData.retrieve(sd1.keyTicker) != null &&
+    StockData.retrieve(sd2.keyTicker) != null &&
+    RecentQuotes.retrieve(sd1.keyTicker) != null &&
+    RecentQuotes.retrieve(sd2.keyTicker) != null,
+    "only runtime data was cleared");
+});
+
+test("it should be able to clear all contained runtime and local storage data, \
+  if specified",
+function() {
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  var rq2 = new RecentQuotes(sd2.keyTicker);
+  slm.add(rq2);
+  slm.saveAll();
+  
+  // Clear
+  slm.clear(true);
+  ok(slm.size() == 0 && JSON.stringify(slm.items) == JSON.stringify({}) &&
+    StockData.retrieve(sd1.keyTicker) == null &&
+    StockData.retrieve(sd2.keyTicker) == null &&
+    RecentQuotes.retrieve(sd1.keyTicker) == null &&
+    RecentQuotes.retrieve(sd2.keyTicker) == null,
+    "both runtime data and local storage data was cleared");
+});
+
+test("it should be able to reload itself with local storage data",
+function() {
+  lsu.clearAll();
+  
+  lsu.clearAll();
+  var slm = new StockDataManager();
+  
+  // Add
+  var sd1 = new StockData();
+  sd1.assign({symbol:'C',exchange:'NYSE'});
+  slm.add(sd1);
+  var sd2 = new StockData();
+  sd2.assign({symbol:'BAC',exchange:'NYSE'});
+  slm.add(sd2);
+  var rq1 = new RecentQuotes(sd1.keyTicker);
+  slm.add(rq1);
+  var rq2 = new RecentQuotes(sd2.keyTicker);
+  slm.add(rq2);
+  slm.saveAll(); // Save
+  
+  var slm2 = new StockDataManager();
+  slm2.reload();
+  equal(JSON.stringify(slm2), JSON.stringify(slm));
+});
+
+});
+
+</script>
+  
+</head>
+<body>
+ <h1 id="qunit-header">utils.js unit testing</h1>
+ <h2 id="qunit-banner"></h2>
+ <div id="qunit-testrunner-toolbar"></div>
+ <h2 id="qunit-userAgent"></h2>
+ <ol id="qunit-tests"></ol>
+ <div id="qunit-fixture">test markup, will be hidden</div>
+</body>
+</html>
