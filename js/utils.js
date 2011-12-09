@@ -288,3 +288,4 @@ var debugUtils = (function() {
   };
 })();
 
+debugUtils.enable(false);

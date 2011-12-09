@@ -13,7 +13,7 @@ function SymbolList(name, limit) {
   
   this.symbols = [];
   this.name = name;
-  this.limit = limit;
+  this.limit = (limit && limit > 0) ? limit : SymbolList.defaultLimit;
   this.visible = true;
   this.enable = true;
 };
@@ -21,6 +21,8 @@ function SymbolList(name, limit) {
 // inherit from LSModel
 SymbolList.prototype = new LSModel();
 SymbolList.prototype.constructor = SymbolList;
+
+SymbolList.defaultLimit = 20;
 
 /**
  * Retrieve symbol list from local storage by name.
@@ -58,16 +60,40 @@ SymbolList.prototype._generateLSKey = function(listName) {
 };
 
 /**
+ * Set the limit of symbol list.
+ * @param {number} limit
+ */
+SymbolList.prototype.setLimit = function(limit) {
+  if (limit > 0 && this.limit != limit) {
+    var n = this.symbols.length - limit;
+    if (n > 0) {
+      this.symbols.splice(limit, n);
+    }
+    this.limit = limit;
+  }
+};
+
+/**
  * Add a symbol.
  * @param {string} symbol
+ * @param {bool} shiftOldestIfFull: get rid of the first symbol (to make room
+ *                                  for the new one) if the list is full.
  * @return {bool} true if added; otherwise false
  */
-SymbolList.prototype.add = function(symbol) {
-  if (this.symbols.length >= this.limit)
-    return false;
+SymbolList.prototype.add = function(symbol, shiftOldestIfFull) {
   var i = this.symbols.indexOf(symbol);
   if (i != -1)
-    return false; // already in the list
+    return true; // already in the list
+  
+  if (this.symbols.length >= this.limit) {
+    if (shiftOldestIfFull) {
+      while (this.symbols.length >= this.limit)
+        this.symbols.shift();
+    } else {
+      return false; // couldn't add because reached limit
+    }
+  }
+  
   this.symbols.push(symbol);
   return true;
 };

@@ -32,10 +32,10 @@ module("Constructor");
 
 test("constructor should generate correct LS key", function() {
   var sl = new SymbolList("Watch", 30);
-  equal(sl.lsKey, "l_watch");
+  equal(sl.lsKey, "sl_watch");
   
   sl = new SymbolList("Recent Quotes", 10);
-  equal(sl.lsKey, "l_recent_quotes");
+  equal(sl.lsKey, "sl_recent_quotes");
 });
 
 module("Save and retrieve");
@@ -58,6 +58,24 @@ test("it should correctly retrieve SymbolList object using LS key", function() {
   sl.save();
   var sl2 = SymbolList.retrieveByLSKey(sl.lsKey);
   equal(JSON.stringify(sl2), JSON.stringify(sl));
+});
+
+module("Set limit");
+
+test("it should discard overlimited part if a new lower limit is set.",
+function() {
+  var sl = new SymbolList("Recent Quotes", 10);
+  sl.add("NYSE:RENN");
+  sl.add("NYSE:C");
+  sl.add("NASDAQ:AAPL");
+  sl.add("NASDAQ:GOOG");
+  sl.add("NYSE:BAC");
+  sl.setLimit(8);
+  ok(sl.size() == 5 && sl.limit == 8, sl.json());
+  sl.setLimit(3);
+  ok(sl.size() == 3 && sl.limit == 3, sl.json());
+  sl.setLimit(20);
+  ok(sl.size() == 3 && sl.limit == 20, sl.json());
 });
 
 module("Add");
@@ -85,7 +103,7 @@ test("it should avoid adding duplications", function() {
   equal(sl.symbols.length, 2, "symbol list length is still 2");
 });
 
-test("it should avoid adding if limit is reached", function() {
+test("it should handle adding when limit is reached", function() {
   var sl = new SymbolList("Recent Quotes", 3);
   sl.add("NYSE:RENN");
   sl.add("NYSE:C");
@@ -96,6 +114,13 @@ test("it should avoid adding if limit is reached", function() {
     sl.contains("NASDAQ:AAPL") && 
     !sl.contains("NASDAQ:GOOG") &&
     sl.symbols.length == 3, "The last symbol wasn't added");
+  
+  sl.add("NASDAQ:GOOG", true);
+  ok(!sl.contains("NYSE:RENN") && 
+    sl.contains("NYSE:C") && sl.indexOf("NYSE:C") == 0 &&
+    sl.contains("NASDAQ:AAPL") && 
+    sl.contains("NASDAQ:GOOG") &&
+    sl.symbols.length == 3, "The list was shifted: " + sl.json());
 });
 
 module("Del");

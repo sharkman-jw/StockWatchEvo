@@ -210,7 +210,8 @@ RecentQuotes.prototype._calcTrend = function(newQuote) {
  * @param {number} quote
  */
 RecentQuotes.prototype.add = function(quote) {
-  // get rid of oldest quote(s) if reached limit
+  // get rid of oldest quote(s) if reached limit;
+  // trend is only calculated when the queue is full.
   if (this.quotes.length == RecentQuotes._quotesListLimit) {
     this._calcTrend(quote); // calc trend before updating the quote list
     this.quotes.shift();
