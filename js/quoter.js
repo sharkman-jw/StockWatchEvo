@@ -11,6 +11,7 @@
 function Quoter() {
   this.source = '';
   this.quoteUrl = '';
+  this.enable = true;
 };
 
 Quoter.processResultStockDataCallBack = null;
@@ -288,18 +289,23 @@ BatsQuoter.prototype.composeGroupQuoteUrl = function(symbols) {
 
 /**
  * Request a quote.
- * @param {string} symbol
+ * @param {string} symbol: plain symbol, e.g.: AAPL, GOOG
  * @param {string} market: optional, e.g.: NYSE, NASDAQ, NYSEAMEX
  */
 BatsQuoter.prototype.requestQuote = function(symbol, market) {
-  var xhr = new XMLHttpRequest();
-  var url = this.composeQuoteUrl(symbol, market);
-  debugUtils.log(url);
-  if (url) {
-    xhr.quoteTarget = {'symbol': symbol, 'market': market};
-    xhr.open("GET", url, true);
-    xhr.onreadystatechange = this._processSingleRequestReadyStateChange;
-    xhr.send(null);
+  if (!enable)
+    return;
+  // only supports US markets
+  if (market == "NYSE" || market == "NASDAQ" || market == "NYSEAMEX") {
+    var xhr = new XMLHttpRequest();
+    var url = this.composeQuoteUrl(symbol, market);
+    debugUtils.log(url);
+    if (url) {
+      xhr.quoteTarget = {'symbol': symbol, 'market': market};
+      xhr.open("GET", url, true);
+      xhr.onreadystatechange = this._processSingleRequestReadyStateChange;
+      xhr.send(null);
+    }
   }
 };
 

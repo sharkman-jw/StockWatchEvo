@@ -259,7 +259,7 @@ LSModel.prototype.json = function() {
  * debugUtils singleton
  */
 var debugUtils = (function() {
-  var _config = { enable: true };
+  var _config = { enable: false };
   
   return {
     enable: function(enableIt) {
@@ -287,5 +287,3 @@ var debugUtils = (function() {
     }
   };
 })();
-
-debugUtils.enable(false);

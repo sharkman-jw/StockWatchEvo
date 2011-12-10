@@ -6,9 +6,31 @@
  */
 
 var bg = (function() {
+  debugUtils.enable(true);
   
   var lsu = localStorageUtils;
-  var subs = symbolSubscription;
+  var subs = (function() {
+    var _symbols = [];
+    var _outdated = true;
+    var _slm = null; // symbol list manager
+    var _update = function() {
+      if (_outdated && _slm)
+          _symbols = _slm.getSymbols();
+    };
+    return {
+      init: function(slm) {
+        _slm = slm;
+        _outdated = true;
+        _symbols = [];
+      },
+      setOutdated: function() { _outdated = true; },
+      getSymbols: function() {
+        _update();
+        return _symbols;
+      },
+      update: _update
+    };
+  })();
   
   var sdm = new StockDataManager();
   var slm = new SymbolListManager();
@@ -16,11 +38,12 @@ var bg = (function() {
   // Setup quoters
   var gQuoter = new GoogleQuoter();
   var batsQuoter = new BatsQuoter();
+  batsQuoter.enable = false;
   /**
-   * Callback for Quoter after getting quote from providers and now process the
-   * StockData object.
+   * Callback for GoogleQuoter after getting quote from providers
+   * and now process the StockData object.
    */
-  Quoter.processResultStockDataCallBack = function(stockData) {
+  GoogleQuoter.processResultStockDataCallBack = function(stockData) {
     // This incoming stockData contains all data except bids and asks,
     // so we just use everything except those two.
     var sd = sdm.getStockData(stockData.keyTicker);
@@ -30,7 +53,11 @@ var bg = (function() {
     }
     sdm.add(stockData);
     stockData.save();
+    // TODO:
+    // alertManager.checkAlert(stockData.keyTicker);
     debugUtils.log(stockData.keyTicker + " saved");
+    // now request bids and asks
+    batsQuoter.requestQuote(stockData.symbol, stockData.exchange);
   };
   /**
    * Callback for BatsQuoter after getting quote from BATS and now process the
@@ -51,12 +78,37 @@ var bg = (function() {
   };
   
   /**
-   *
+   * Handle the transition from previous version to latest version, using
+   * current local storage data.
+   * @note testing method: setup local storage as old version's
    */
-  var processUpdate = function() {
-    // TODO: transit from older versions to this version by using current data
-    // in local storage. lots of work here.
-    // testing method: setup local storage as old version's
+  var upgrade = function() {
+    var versionCached = lsu.get("_version", "");
+    var currentVersion = chrome.app.getDetails().version;
+    if (currentVersion == versionCached) { // up-to-date
+      return; // no need to upgrade
+    };
+    
+    var expectedPreviousVersion = "1.1.0.4";
+    if (versionCached != expectedPreviousVersion) {
+      // upgrade from unexpected version (including brand new installation):
+      // setup as new, except for symbol lists (if they exists).
+      
+      // try retrieve symbol lists
+      // TODO
+      
+      // clear all
+      lsu.clearAll();
+      
+      // setup symbol lists
+      // TODO
+      
+      return;
+    }
+    
+    // upgrade from expected previous version
+    
+    // TODO: lots of work here.
   };
   
   /**
@@ -96,6 +148,7 @@ var bg = (function() {
       sl.add("NYSE:GE");
       sl.add("NYSE:C");
       sl.add("NASDAQ:MSFT");
+      sl.add("LON:LSE");
       sl.save();
       slm.add(sl);
     }
@@ -107,7 +160,8 @@ var bg = (function() {
       slm.add(sl);
     }
     slm.save();
-    subs.symbols = slm.getSymbols();
+    subs.init(slm);
+    subs.update();
   };
   
   /**
@@ -125,8 +179,7 @@ var bg = (function() {
   var loopRefreshQuotes = function() {
     // refresh if data refresh is on
     if (lsu.getInt('refresh_data', 0)) {
-      gQuoter.requestGroupQuotes(subs.symbols);
-      batsQuoter.requestQuote("AAPL", "NASDAQ");
+      gQuoter.requestGroupQuotes(subs.getSymbols());
     }
     // scehdule next refresh
     var setting = settingsManager.getSetting('data_refresh_interval');
@@ -136,12 +189,13 @@ var bg = (function() {
   
   return {
     stockDataManager: sdm,
+    subscriptions: subs,
     
     /**
      *
      */
     init: function() {
-      processUpdate();
+      upgrade();
       initSettings();
       initSubscription();
       initOtherData();
