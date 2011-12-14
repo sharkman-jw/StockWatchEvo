@@ -191,6 +191,10 @@ SymbolList.prototype.size = function() {
   return this.symbols.length;
 };
 
+SymbolList.prototype.at = function(index) {
+  return this.symbols[index];
+};
+
 
 
 /**
