@@ -262,6 +262,8 @@ var debugUtils = (function() {
   var _config = { enable: false };
   
   return {
+    config: _config,
+    
     enable: function(enableIt) {
       _config.enable = enableIt;
     },

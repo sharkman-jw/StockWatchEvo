@@ -293,7 +293,7 @@ BatsQuoter.prototype.composeGroupQuoteUrl = function(symbols) {
  * @param {string} market: optional, e.g.: NYSE, NASDAQ, NYSEAMEX
  */
 BatsQuoter.prototype.requestQuote = function(symbol, market) {
-  if (!enable)
+  if (!this.enable)
     return;
   // only supports US markets
   if (market == "NYSE" || market == "NASDAQ" || market == "NYSEAMEX") {

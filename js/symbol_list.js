@@ -203,7 +203,7 @@ SymbolList.prototype.at = function(index) {
 function SymbolListManager() {
   LSModel.apply(this);
   this.lsKey = SymbolListManager._lsKey;
-  this.lists = {}; // list names
+  this.lists = {}; // list names, not SymbolList objects
   this.count = 0;
 };
 
