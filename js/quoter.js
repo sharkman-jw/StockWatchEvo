@@ -12,9 +12,8 @@ function Quoter() {
   this.source = '';
   this.quoteUrl = '';
   this.enable = true;
+  this.resultStockDataHandler = null;
 };
-
-Quoter.processResultStockDataCallBack = null;
 
 /**
  * Decode hexadecimal.
@@ -46,10 +45,11 @@ Quoter.decodeHexadecimal = function(text) {
  * @param {string} symbol
  */
 Quoter.prototype.requestQuote = function(symbol) {
-  var xhr = new XMLHttpRequest();
   var url = this.composeQuoteUrl(symbol);
   debugUtils.log(url);
   if (url) {
+    var xhr = new XMLHttpRequest();
+    xhr.resultStockDataHandler = this.resultStockDataHandler;
     xhr.open("GET", url, true);
     xhr.onreadystatechange = this._processSingleRequestReadyStateChange;
     xhr.send(null);
@@ -61,10 +61,11 @@ Quoter.prototype.requestQuote = function(symbol) {
  * @param {array} symbols
  */
 Quoter.prototype.requestGroupQuotes = function(symbols) {
-  var xhr = new XMLHttpRequest();
   var url = this.composeGroupQuoteUrl(symbols);
   debugUtils.log(url);
   if (url) {
+    var xhr = new XMLHttpRequest();
+    xhr.resultStockDataHandler = this.resultStockDataHandler;
     xhr.open("GET", url, true);
     xhr.onreadystatechange = this._processGroupRequestReadyStateChange;
     xhr.send(null);
@@ -112,8 +113,6 @@ function GoogleQuoter() {
  */
 GoogleQuoter.prototype = new Quoter();
 GoogleQuoter.prototype.constructor = GoogleQuoter;
-
-GoogleQuoter.processResultStockDataCallBack = null;
 
 /**
  * Process result data from google.
@@ -168,10 +167,7 @@ GoogleQuoter.processResultData = function(data) {
   sd.lastTick = 'e'; // string - 'e', 'u', 'd'
   sd.generateKeyTicker(); // string - exchange:symbol
   
-  if (GoogleQuoter.processResultStockDataCallBack)
-    GoogleQuoter.processResultStockDataCallBack(sd);
-  else if (Quoter.processResultStockDataCallBack)
-    Quoter.processResultStockDataCallBack(sd);
+  return sd;
 };
 
 /**
@@ -221,8 +217,12 @@ GoogleQuoter.prototype._processGroupRequestReadyStateChange = function() {
     
     var n = resultDataList.length;
     if (good && n) {
-      for (var i = 0; i < n; ++ i)
-        GoogleQuoter.processResultData(resultDataList[i]);
+      var sd = null;
+      for (var i = 0; i < n; ++ i) {
+        sd = GoogleQuoter.processResultData(resultDataList[i]);
+        if (sd && this.resultStockDataHandler)
+          this.resultStockDataHandler(sd);
+      }
     } else {
       debugUtils.log('GoogleQuoter failed.')
       // TODO: handle request fail
@@ -233,7 +233,7 @@ GoogleQuoter.prototype._processGroupRequestReadyStateChange = function() {
 
 
 /**
- * @class GoogleQuoter, derived from Quoter
+ * @class BatsQuoter, derived from Quoter
  */
 function BatsQuoter() {
   Quoter.call(this);
@@ -249,12 +249,6 @@ BatsQuoter.prototype = new Quoter();
 BatsQuoter.prototype.constructor = BatsQuoter;
 
 /**
- * Call back for followup process on result StockData object.
- * @note static
- */
-BatsQuoter.processResultStockDataCallBack = null;
-
-/**
  * Process result data from BATS.
  * @param {obj} data
  * @param {string} market: exchange code
@@ -263,11 +257,7 @@ BatsQuoter.processResultData = function(data, market) {
   var sd = new StockData();
   sd.assign({'symbol': data.symbol, 'exchange': market, 'bids': data.bids,
     'asks': data.asks}, false);
-  
-  if (BatsQuoter.processResultStockDataCallBack)
-    BatsQuoter.processResultStockDataCallBack(sd);
-  else if (Quoter.processResultStockDataCallBack)
-    Quoter.processResultStockDataCallBack(sd);
+  return sd;
 };
 
 /**
@@ -297,10 +287,11 @@ BatsQuoter.prototype.requestQuote = function(symbol, market) {
     return;
   // only supports US markets
   if (market == "NYSE" || market == "NASDAQ" || market == "NYSEAMEX") {
-    var xhr = new XMLHttpRequest();
     var url = this.composeQuoteUrl(symbol, market);
     debugUtils.log(url);
     if (url) {
+      var xhr = new XMLHttpRequest();
+      xhr.resultStockDataHandler = this.resultStockDataHandler;
       xhr.quoteTarget = {'symbol': symbol, 'market': market};
       xhr.open("GET", url, true);
       xhr.onreadystatechange = this._processSingleRequestReadyStateChange;
@@ -332,7 +323,9 @@ BatsQuoter.prototype._processSingleRequestReadyStateChange = function() {
     }
     
     if (good && resultData) {
-      BatsQuoter.processResultData(resultData, this.quoteTarget.market);
+      var sd = BatsQuoter.processResultData(resultData, this.quoteTarget.market);
+      if (sd && this.resultStockDataHandler)
+        this.resultStockDataHandler(sd);
     } else {
       debugUtils.log('BatsQuoter failed.')
       // TODO: handle fail

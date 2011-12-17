@@ -43,7 +43,7 @@ var bg = (function() {
    * Callback for GoogleQuoter after getting quote from providers
    * and now process the StockData object.
    */
-  GoogleQuoter.processResultStockDataCallBack = function(stockData) {
+  gQuoter.resultStockDataHandler = function(stockData) {
     // This incoming stockData contains all data except bids and asks,
     // so we just use everything except those two.
     var sd = sdm.getStockData(stockData.keyTicker);
@@ -63,7 +63,7 @@ var bg = (function() {
    * Callback for BatsQuoter after getting quote from BATS and now process the
    * StockData object.
    */
-  BatsQuoter.processResultStockDataCallBack = function(stockData) {
+  batsQuoter.resultStockDataHandler = function(stockData) {
     // Only bids and asks in the incoming stockData are valid, so we just use
     // these two.
     var sd = sdm.getStockData(stockData.keyTicker);
@@ -149,6 +149,7 @@ var bg = (function() {
       sl.add("NYSE:C");
       sl.add("NASDAQ:MSFT");
       sl.add("LON:LSE");
+      sl.add("NYSE:RENN");
       sl.save();
       slm.add(sl);
     }
